@@ -66,3 +66,47 @@ class BlastMiner:
                     self.saida_rect = pygame.Rect(x, y, TELA_SIZE, TELA_SIZE)
                     pygame.draw.rect(self.tela, (150, 0, 0), self.saida_rect)
 
+    def executar(self):
+        while self.rodando:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.rodando = False
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_SPACE:
+                        nova_bomba = bomba()
+                        nova_bomba.colocar(self.player)
+                        self.bomba.append(nova_bomba)
+
+            # logica
+            self.player.controlar(self.paredes)
+
+            #bomba
+            for b in self.bomba[:]:
+                b.atualizar(MAPA_FASE_1, self.player)
+                if b.explodiu:
+                    self.bomba.remove(b)
+
+            # vitoria
+            if self.saida_rect and self.player.rect.colliderect(self.saida_rect):
+                print("Você achou a saída!")
+                self.rodando = False
+
+            # desenho
+            self.tela.fill((20, 20, 20)) # limpa fundo
+            self.desenhar_cenario() # desenha o mapa
+            
+
+            for b in self.bomba:
+                pygame.draw.rect(self.tela, b.cor, b.rect) # desenha as bombas
+            
+            # player
+            pygame.draw.rect(self.tela, (255, 200, 0), self.player.rect)
+
+            pygame.display.flip()
+            self.clock.tick(60)
+
+        pygame.quit()
+
+if __name__ == "__main__":
+    game = BlastMiner()
+    game.executar()
