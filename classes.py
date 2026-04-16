@@ -76,3 +76,34 @@ class bomba:
                 # SE ATINGIR MINÉRIO (2), ELE SOME (0)
                 if mapa[alvo_l][alvo_c] == 2:
                     mapa[alvo_l][alvo_c] = 0
+    
+    def atualizar_alcance(self, mapa, player):
+        pass
+
+class fantasma:
+    def __init__(self, x, y):
+        self.rect = pygame.Rect(x, y, 50, 50)
+        self.velocidade = 2
+        self.cor = 'branco'
+        self.dano = 1
+        self.vida = 3
+
+    def mover(self, player):
+        if self.rect.x < player.rect.x:
+            self.rect.x += self.velocidade
+        elif self.rect.x > player.rect.x:
+            self.rect.x -= self.velocidade
+        if self.rect.y < player.rect.y:
+            self.rect.y += self.velocidade
+        elif self.rect.y > player.rect.y:
+            self.rect.y -= self.velocidade
+
+
+    def perseguir(self, player, paredes):
+        pass
+
+    def atacar(self, player):
+        pass
+
+    def morrer(self):
+        pass

@@ -1,5 +1,5 @@
 import pygame
-from classes import Player, bomba
+from classes import Player, bomba, fantasma
 
 ALTURA = 900 
 LARGURA = 1200
@@ -35,6 +35,7 @@ class BlastMiner:
         
         self.clock = pygame.time.Clock()
         self.player = Player()
+        self.inimigos[fantasma(1200, 800)]
         self.rodando = True
         self.paredes = [] # lista de obstaculos
         self.bomba = [] # lista de bombas ativas
@@ -72,10 +73,15 @@ class BlastMiner:
                 if event.type == pygame.QUIT:
                     self.rodando = False
                 if event.type == pygame.KEYDOWN:
+                    col = self.player.rect.centerx // 50
+                    lin = self.player.rect.centery // 50
+                    
+                    pos_x = col * 50
+                    pos_y = lin * 50
                     if event.key == pygame.K_SPACE:
-                        nova_bomba = bomba()
-                        nova_bomba.colocar(self.player)
+                        nova_bomba = bomba(pos_x, pos_y)
                         self.bomba.append(nova_bomba)
+
 
             # logica
             self.player.controlar(self.paredes)
@@ -85,6 +91,12 @@ class BlastMiner:
                 b.atualizar(MAPA_FASE_1, self.player)
                 if b.explodiu:
                     self.bomba.remove(b)
+
+            #fantasma
+            for inimigo in self.inimigos:
+                inimigo.mover(self.player)
+                if inimigo.rect.colliderect(self.player.rect):
+                    self.player.receber_dano()
 
             # vitoria
             if self.saida_rect and self.player.rect.colliderect(self.saida_rect):
@@ -98,6 +110,11 @@ class BlastMiner:
 
             for b in self.bomba:
                 pygame.draw.rect(self.tela, b.cor, b.rect) # desenha as bombas
+
+            # fantasma
+            for inimigo in self.inimigos:
+                pygame.draw.rect(self.tela, (255, 0, 0), inimigo.rect)
+
             
             # player
             pygame.draw.rect(self.tela, (255, 200, 0), self.player.rect)
