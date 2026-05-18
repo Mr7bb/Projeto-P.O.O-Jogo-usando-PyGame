@@ -1,6 +1,6 @@
 import pygame
 from classes import Player, bomba, fantasma
- #teste jv
+
 ALTURA = 900 
 LARGURA = 1200
 TELA_SIZE = 50
