@@ -35,7 +35,7 @@ class BlastMiner:
         
         self.clock = pygame.time.Clock()
         self.player = Player()
-        self.inimigos[fantasma(1200, 800)]
+        self.inimigos = [fantasma(1200, 800)]
         self.rodando = True
         self.paredes = [] # lista de obstaculos
         self.bomba = [] # lista de bombas ativas
@@ -83,12 +83,14 @@ class BlastMiner:
                         self.bomba.append(nova_bomba)
 
 
-            # logica
+            # logica do player
             self.player.controlar(self.paredes)
+            if self.player.invencivel_timer > 0:
+                self.player.invencivel_timer -= 1
 
             #bomba
             for b in self.bomba[:]:
-                b.atualizar(MAPA_FASE_1, self.player)
+                b.atualizar(MAPA_FASE_1, self.player, self.inimigos)
                 if b.explodiu:
                     self.bomba.remove(b)
 
@@ -116,8 +118,9 @@ class BlastMiner:
                 pygame.draw.rect(self.tela, (255, 0, 0), inimigo.rect)
 
             
-            # player
-            pygame.draw.rect(self.tela, (255, 200, 0), self.player.rect)
+            # playeer invencivel
+            if self.player.invencivel_timer % 4 == 0:
+                pygame.draw.rect(self.tela, (255, 200, 0), self.player.rect)
 
             pygame.display.flip()
             self.clock.tick(60)
