@@ -1,6 +1,6 @@
 import pygame
 import random
-
+#teste
 # classe player (personagem)
 class Player: 
     def __init__(self): 
