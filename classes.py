@@ -4,10 +4,10 @@ import random
 # classe player (personagem)
 class Player: 
     def __init__(self): 
-        self.rect = pygame.Rect(50, 50, 50, 50) # player de 35px para blocos de 50px
+        self.rect = pygame.Rect(50, 50, 40, 40) # player de 35px para blocos de 50px
         self.velocidade = 5
         self.vida = 3
-        self.invencive_timer = 0
+        self.invencivel_timer = 0
 
     def controlar(self, paredes, bombas):
         pos_antiga_x = self.rect.x
@@ -37,8 +37,8 @@ class Player:
             print(f"Player recebeu dano! Vida: {self.vida}")
 
 class bomba:
-    def __init__(self):
-        self.rect = pygame.Rect(0, 0, 50, 50)
+    def __init__(self, x, y):
+        self.rect = pygame.Rect(x, y, 50, 50)
         self.tempo_explosao = 90
         self.cor = (0, 0, 0)
         self.explodiu = False

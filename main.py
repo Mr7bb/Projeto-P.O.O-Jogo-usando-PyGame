@@ -75,16 +75,13 @@ class BlastMiner:
                 if event.type == pygame.KEYDOWN:
                     col = self.player.rect.centerx // 50
                     lin = self.player.rect.centery // 50
-                    
-                    pos_x = col * 50
-                    pos_y = lin * 50
                     if event.key == pygame.K_SPACE:
-                        nova_bomba = bomba(pos_x, pos_y)
+                        nova_bomba = bomba(col * 50, lin * 50) # cria bomba na posição do player
                         self.bomba.append(nova_bomba)
 
 
             # logica do player
-            self.player.controlar(self.paredes)
+            self.player.controlar(self.paredes, self.bomba)
             if self.player.invencivel_timer > 0:
                 self.player.invencivel_timer -= 1
 
@@ -96,7 +93,7 @@ class BlastMiner:
 
             #fantasma
             for inimigo in self.inimigos:
-                inimigo.mover(self.player)
+                inimigo.mover(self.player, self.paredes)
                 if inimigo.rect.colliderect(self.player.rect):
                     self.player.receber_dano()
 
