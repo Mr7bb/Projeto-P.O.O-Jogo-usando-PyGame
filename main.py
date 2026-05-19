@@ -35,7 +35,7 @@ class BlastMiner:
         
         self.clock = pygame.time.Clock()
         self.player = Player()
-        self.inimigos = [fantasma(1200, 800)]
+        self.inimigos = [fantasma(850, 700)]
         self.rodando = True
         self.paredes = [] # lista de obstaculos
         self.bomba = [] # lista de bombas ativas
@@ -112,7 +112,7 @@ class BlastMiner:
 
             # fantasma
             for inimigo in self.inimigos:
-                pygame.draw.rect(self.tela, (255, 0, 0), inimigo.rect)
+                pygame.draw.rect(self.tela, inimigo.cor, inimigo.rect)
 
             
             # playeer invencivel
