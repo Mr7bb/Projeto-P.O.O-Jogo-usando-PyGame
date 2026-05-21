@@ -1,5 +1,6 @@
 import pygame
 from Mapas.mapa_1 import MAPA_FASE_1, ALTURA, LARGURA, TELA_SIZE
+from Mapas.mapa_2 import MAPA_FASE_2
 from entidades.Player import Player
 from entidades.Fantasma import Fantasma
 from entidades.Golem import Golem
@@ -13,9 +14,11 @@ class BlastMiner:
 
         self.clock  = pygame.time.Clock()
         self.player = Player()
+        self.fase_atual = 1
+        self.mapa = MAPA_FASE_1
         self.inimigos = [
             Fantasma(850, 700),   # Inimigo tipo Fantasma
-            Golem(600, 400),      # Inimigo tipo Golem
+            Golem(600, 450),      # Inimigo tipo Golem
         ]
         self.rodando   = True
         self.paredes   = []
@@ -24,7 +27,7 @@ class BlastMiner:
 
     def desenhar_cenario(self):
         self.paredes = []
-        for linha_idx, linha in enumerate(MAPA_FASE_1):
+        for linha_idx, linha in enumerate(self.mapa):
             for col_idx, tile in enumerate(linha):
                 x = col_idx * TELA_SIZE
                 y = linha_idx * TELA_SIZE
@@ -85,7 +88,7 @@ class BlastMiner:
 
             # Bombas
             for b in self.bombas[:]:
-                b.atualizar(MAPA_FASE_1, self.player, self.inimigos)
+                b.atualizar(self.mapa, self.player, self.inimigos)
                 if b.explodiu:
                     self.bombas.remove(b)
 
@@ -93,11 +96,11 @@ class BlastMiner:
             self.inimigos = [i for i in self.inimigos if i.ativo]
 
             for inimigo in self.inimigos:
-                inimigo.mover(self.player, self.paredes, MAPA_FASE_1)
+                inimigo.mover(self.player, self.paredes, self.mapa)
 
                 # Golem causa knockback; Fantasma só causa dano normal
                 if isinstance(inimigo, Golem):
-                    inimigo.aplicar_knockback_no_player(self.player)
+                    inimigo.aplicar_knockback_no_player(self.player, self.paredes, self.bombas)
                 elif inimigo.rect.colliderect(self.player.rect):
                     self.player.receber_dano()
 
@@ -108,9 +111,19 @@ class BlastMiner:
 
             # Vitória
             if self.saida_rect and self.player.rect.colliderect(self.saida_rect):
-                print("=== CONTRATO CUMPRIDO — VOCÊ ESCAPOU! ===")
-                self.rodando = False
-
+                if self.fase_atual == 1:
+                    self.fase_atual = 2
+                    self.mapa = MAPA_FASE_2
+                    self.player.rect.topleft = (50, 50)
+                    self.saida_rect = None
+                    self.inimigos = [
+            Fantasma(100, 100),
+            Golem(300, 200),
+        ]
+                        
+                else:
+                    print("=== CONTRATO CUMPRIDO — VOCÊ ESCAPOU! ===")
+                    self.rodando = False
             # --- DESENHO ---
             self.tela.fill((20, 20, 20))
             self.desenhar_cenario()

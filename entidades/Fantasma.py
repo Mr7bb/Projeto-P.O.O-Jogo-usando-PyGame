@@ -1,6 +1,7 @@
 import pygame
 import random
 from entidades.Inimigo import Inimigo
+from objetos.Bomba import Bomba
 
 class Fantasma(Inimigo):
     COR_NORMAL = (255, 225, 255)   # Branco-rosado

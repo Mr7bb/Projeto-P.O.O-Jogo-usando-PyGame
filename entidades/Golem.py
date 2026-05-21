@@ -1,5 +1,7 @@
 import pygame
 from entidades.Inimigo import Inimigo
+from objetos import Bomba
+
 
 class Golem(Inimigo):
     COR_NORMAL  = (139, 90, 43)    # Marrom pedra
@@ -57,13 +59,13 @@ class Golem(Inimigo):
         if self.cooldown_knockback > 0:
             self.cooldown_knockback -= 1
 
-    def aplicar_knockback_no_player(self, player):
+    def aplicar_knockback_no_player(self, player, paredes, bombas):
         """
         ao colidir com o player, empurra ele para longe além de causar dano.
         """
         if self.rect.colliderect(player.rect):
             player.receber_dano()
             if self.cooldown_knockback == 0:
-                player.aplicar_knockback(self.rect)
+                player.aplicar_knockback(self.rect, paredes, bombas)
                 self.cooldown_knockback = 90  # Evita knockback spam (1,5s)
                 print("[GOLEM] Knockback aplicado no Mike!")
