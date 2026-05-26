@@ -11,6 +11,11 @@ class BlastMiner:
         pygame.init()
         self.tela = pygame.display.set_mode((LARGURA, ALTURA))
         pygame.display.set_caption("Blast Miner Co. - IFRN")
+        self.sprites = {
+            "chao": pygame.transform.scale(pygame.image.load("assets/chao.png"), (TELA_SIZE, TELA_SIZE)),
+            "parede": pygame.transform.scale(pygame.image.load("assets/parede.png"), (TELA_SIZE, TELA_SIZE)),
+            "minerio": pygame.transform.scale(pygame.image.load("assets/minerio.png"), (TELA_SIZE, TELA_SIZE)) 
+        }
 
         self.clock  = pygame.time.Clock()
         self.player = Player()
@@ -33,15 +38,14 @@ class BlastMiner:
                 y = linha_idx * TELA_SIZE
 
                 if tile == 0:
-                    cor = (35, 35, 35) if (linha_idx + col_idx) % 2 == 0 else (45, 45, 45)
-                    pygame.draw.rect(self.tela, cor, (x, y, TELA_SIZE, TELA_SIZE))
+                    self.tela.blit(self.sprites["chao"], (x, y))
                 elif tile == 1:
                     rect = pygame.Rect(x, y, TELA_SIZE, TELA_SIZE)
-                    pygame.draw.rect(self.tela, (60, 60, 75), rect)
+                    self.tela.blit(self.sprites["parede"], (x, y))
                     self.paredes.append(rect)
                 elif tile == 2:
                     rect = pygame.Rect(x, y, TELA_SIZE, TELA_SIZE)
-                    pygame.draw.rect(self.tela, (100, 50, 20), rect)
+                    self.tela.blit(self.sprites["minerio"], (x,y))
                     self.paredes.append(rect)
                 elif tile == 3:
                     self.saida_rect = pygame.Rect(x, y, TELA_SIZE, TELA_SIZE)
