@@ -39,15 +39,14 @@ class Bomba:
             if 0 <= alvo_l < len(mapa) and 0 <= alvo_c < len(mapa[0]):
                 explosao_rect = pygame.Rect(alvo_c * 50, alvo_l * 50, 50, 50)
 
-                if mapa[alvo_l][alvo_c] == 2 or mapa[alvo_l][alvo_c] == 4:
+                if mapa[alvo_l][alvo_c] in [2,4]:
 
-
-                # Destruir minério
-                 if mapa[alvo_l][alvo_c] == 4:
-                    print("Minério destruído!")
-                 else: 
-                    print("Bloco comum destruído!")
-                    mapa[alvo_l][alvo_c] = 0
+                 # Destruir minério
+                   if mapa[alvo_l][alvo_c] == 4:
+                         print("Minério destruído!")
+                   else: 
+                         print("Bloco comum destruído!")
+                   mapa[alvo_l][alvo_c] = 0
 
                 # Dano no Player
                 if player.rect.colliderect(explosao_rect):
@@ -56,4 +55,4 @@ class Bomba:
                 # Dano nos Inimigos
                 for inimigo in inimigos:
                     if inimigo.rect.colliderect(explosao_rect):
-                        inimigo.atravessar_paredes_furias()
+                        inimigo.receber_dano_explosao()

@@ -124,7 +124,7 @@ class BlastMiner:
             self.inimigos = [i for i in self.inimigos if i.ativo]
 
             for inimigo in self.inimigos:
-                inimigo.mover(self.player, self.paredes, self.mapa_atual)
+                inimigo.mover(self.player, self.paredes, self.mapa_atual, self.bombas)
 
                 # Golem causa knockback; Fantasma só causa dano normal
                 if isinstance(inimigo, Golem):
