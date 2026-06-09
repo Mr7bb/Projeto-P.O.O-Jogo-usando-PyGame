@@ -1,6 +1,7 @@
 import pygame
-from Mapas.mapa_1 import MAPA_FASE_1, ALTURA, LARGURA, TELA_SIZE
-from Mapas.mapa_2 import MAPA_FASE_2
+import random
+
+from Mapas.gerador_mapas import GeradorProcedural
 from entidades.Player import Player
 from entidades.Fantasma import Fantasma
 from entidades.Golem import Golem
@@ -10,13 +11,25 @@ from telas.tela_jogo import TelaPause
 from telas.tela_gameover import TelaGameOver
 
 
+
+#configs da janela
+ALTURA = 900
+LARGURA = 1200
+TELA_SIZE = 50
+
 class BlastMiner:
     def __init__(self):
         pygame.init()
         self.tela = pygame.display.set_mode((LARGURA, ALTURA))
         pygame.display.set_caption("Blast Miner Co. - IFRN")
+        self.sprites = {
+            "chao": pygame.transform.scale(pygame.image.load("assets/chao.png"), (TELA_SIZE, TELA_SIZE)),
+            "parede": pygame.transform.scale(pygame.image.load("assets/parede.png"), (TELA_SIZE, TELA_SIZE)),
+            "minerio": pygame.transform.scale(pygame.image.load("assets/minerio.png"), (TELA_SIZE, TELA_SIZE)) 
+        }
 
         self.clock  = pygame.time.Clock()
+        
         self.player = Player()
         self.fase_atual = 1
         self.mapa = MAPA_FASE_1
@@ -50,25 +63,30 @@ class BlastMiner:
     # ──────────────────────────────────────────────────────────────────────
     def desenhar_cenario(self):
         self.paredes = []
-        for linha_idx, linha in enumerate(self.mapa):
+        for linha_idx, linha in enumerate(self.mapa_atual):
             for col_idx, tile in enumerate(linha):
                 x = col_idx * TELA_SIZE
                 y = linha_idx * TELA_SIZE
 
                 if tile == 0:
-                    cor = (35, 35, 35) if (linha_idx + col_idx) % 2 == 0 else (45, 45, 45)
-                    pygame.draw.rect(self.tela, cor, (x, y, TELA_SIZE, TELA_SIZE))
+                    self.tela.blit(self.sprites["chao"], (x, y))
                 elif tile == 1:
                     rect = pygame.Rect(x, y, TELA_SIZE, TELA_SIZE)
-                    pygame.draw.rect(self.tela, (60, 60, 75), rect)
+                    self.tela.blit(self.sprites["parede"], (x, y))
                     self.paredes.append(rect)
                 elif tile == 2:
                     rect = pygame.Rect(x, y, TELA_SIZE, TELA_SIZE)
-                    pygame.draw.rect(self.tela, (100, 50, 20), rect)
+                    self.tela.blit(self.sprites["minerio"], (x,y))
+                    self.paredes.append(rect)
+                elif tile == 4:
+                    rect = pygame.Rect(x, y, TELA_SIZE, TELA_SIZE)
+                    pygame.draw.rect(self.tela, (139, 69, 19), rect)
+                    pygame.draw.circle(self.tela, (255, 215, 0), (x + 25, y + 25), 10)  
                     self.paredes.append(rect)
                 elif tile == 3:
                     self.saida_rect = pygame.Rect(x, y, TELA_SIZE, TELA_SIZE)
                     pygame.draw.rect(self.tela, (150, 0, 0), self.saida_rect)
+                
 
     def desenhar_hud(self):
         fonte = pygame.font.SysFont("monospace", 22, bold=True)
