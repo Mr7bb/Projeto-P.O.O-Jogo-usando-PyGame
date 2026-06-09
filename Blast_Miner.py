@@ -6,6 +6,8 @@ from entidades.Fantasma import Fantasma
 from entidades.Golem import Golem
 from objetos.Bomba import Bomba
 from telas.tela_inicial import TelaInicial
+from telas.tela_jogo import TelaPause
+from telas.tela_gameover import TelaGameOver
 
 
 class BlastMiner:
@@ -27,13 +29,13 @@ class BlastMiner:
         self.bombas     = []
         self.saida_rect = None
 
-        # controla qual tela está sendo exibida
-        self.estado       = "menu"
-        self.tela_inicial = TelaInicial(self.tela)
+        self.estado        = "menu"
+        self.tela_inicial  = TelaInicial(self.tela)
+        self.tela_pause    = TelaPause(self.tela)
+        self.tela_gameover = TelaGameOver(self.tela)
 
     # ──────────────────────────────────────────────────────────────────────
     def _resetar_jogo(self):
-        """Reinicia todas as variáveis do jogo (usado ao voltar ao menu)."""
         self.player     = Player()
         self.fase_atual = 1
         self.mapa       = MAPA_FASE_1
@@ -83,9 +85,12 @@ class BlastMiner:
 
     # ──────────────────────────────────────────────────────────────────────
     def _logica_jogo(self, events):
-        """Toda a lógica do jogo em execução."""
         for event in events:
             if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    self.estado = "pause"
+                    return
+
                 if event.key == pygame.K_SPACE:
                     if self.player.pode_plantar_bomba():
                         col = self.player.rect.centerx // 50
@@ -94,18 +99,15 @@ class BlastMiner:
                         self.bombas.append(nova_bomba)
                         self.player.plantar_bomba()
 
-        # Player
         self.player.controlar(self.paredes, self.bombas)
         if self.player.invencivel_timer > 0:
             self.player.invencivel_timer -= 1
 
-        # Bombas
         for b in self.bombas[:]:
             b.atualizar(self.mapa, self.player, self.inimigos)
             if b.explodiu:
                 self.bombas.remove(b)
 
-        # Inimigos
         self.inimigos = [i for i in self.inimigos if i.ativo]
 
         for inimigo in self.inimigos:
@@ -118,9 +120,7 @@ class BlastMiner:
 
         # Game Over
         if self.player.vida <= 0:
-            print("=== CONTRATO RESCINDIDO — GAME OVER ===")
-            self.estado = "menu"
-            self._resetar_jogo()
+            self.estado = "gameover"
             return
 
         # Vitória / próxima fase
@@ -153,7 +153,7 @@ class BlastMiner:
             pygame.draw.rect(self.tela, (255, 200, 0), self.player.rect)
 
         self.desenhar_hud()
-        pygame.display.flip()
+        # sem display.flip() aqui — fica no executar()
 
     # ──────────────────────────────────────────────────────────────────────
     def executar(self):
@@ -164,7 +164,6 @@ class BlastMiner:
                 if event.type == pygame.QUIT:
                     self.rodando = False
 
-                # ── MENU ──────────────────────────────────────────────────
                 if self.estado == "menu":
                     acao = self.tela_inicial.handle_event(event)
                     if acao == "JOGAR":
@@ -172,14 +171,43 @@ class BlastMiner:
                     elif acao == "SAIR":
                         self.rodando = False
 
-            # ── DESENHO / LÓGICA por estado ───────────────────────────────
+                elif self.estado == "pause":
+                    acao = self.tela_pause.handle_event(event)
+                    if acao == "CONTINUAR":
+                        self.estado = "jogo"
+                    elif acao == "MENU PRINCIPAL":
+                        self.estado = "menu"
+                        self._resetar_jogo()
+                    elif acao == "SAIR":
+                        self.rodando = False
+
+                elif self.estado == "gameover":
+                    acao = self.tela_gameover.handle_event(event)
+                    if acao == "TENTAR NOVAMENTE":
+                        self._resetar_jogo()
+                        self.estado = "jogo"
+                    elif acao == "MENU PRINCIPAL":
+                        self._resetar_jogo()
+                        self.estado = "menu"
+                    elif acao == "SAIR":
+                        self.rodando = False
+
+            # ── desenho / lógica por estado ───────────────────────────────
             if self.estado == "menu":
                 self.tela_inicial.draw()
 
             elif self.estado == "jogo":
                 self._logica_jogo(events)
-                if self.estado == "jogo":   # pode ter voltado pro menu no meio
+                if self.estado == "jogo":
                     self._desenhar_jogo()
+                    pygame.display.flip()
+
+            elif self.estado == "pause":
+                self._desenhar_jogo()
+                self.tela_pause.draw()  # já tem flip interno
+
+            elif self.estado == "gameover":
+                self.tela_gameover.draw()
 
             self.clock.tick(60)
 

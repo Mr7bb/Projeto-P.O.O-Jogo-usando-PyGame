@@ -66,9 +66,6 @@ class TelaInicial:
         pygame.draw.rect(self.tela, (255, 200, 0),
                          (tx, 100 + titulo.get_height() + 4, titulo.get_width(), 3))
 
-        # subtítulo
-        sub = self.fonte_sub.render("IFRN  —  Projeto P.O.O", True, (80, 80, 100))
-        self.tela.blit(sub, (self.largura // 2 - sub.get_width() // 2, 185))
 
         # ── ícone de bomba 
         cx, cy = self.largura // 2, 270
