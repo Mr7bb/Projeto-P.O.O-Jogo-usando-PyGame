@@ -1,104 +1,190 @@
-import random 
+import random
+ 
+# tiles:
+# 0 = chão
+# 1 = parede (inquebrável)
+# 2 = pedra (quebrável)
+# 3 = saída
+# 4 = minério (quebrável)
+ 
 class GeradorProcedural:
-    def __init__(self, linhas=17, colunas=24):
-        self.linhas = linhas
+    def __init__(self, linhas=18, colunas=24):
+        self.linhas  = linhas
         self.colunas = colunas
-
-    def gerar_fase(self):
-        #serve para gerar uma matriz de mapa em regras inteligentes 
-        # o mapa é preechido totalmente pelo chão=0
-
-        mapa = [[0 for _ in range(self.colunas)] for _ in range(self.linhas)]
-
-        #cria as bordas indestrutiveis do mapa
-        for l in range (self.linhas):
-            for c in range(self.colunas):
-                if l == 0 or l == self.linhas-1 or c == 0 or c == self.colunas-1:
-                    mapa[l][c] = 1
-        
-        #cria piláres fixos e intercalados
-        for l in range(2, self.linhas-2, 2):
-            for c in range(2, self.colunas-2, 2):
-                mapa[l][c] = 1
-
-        #cria a "zona segura" do jogador no canto superior esquerdo.
-        zona_seguras = [(1,1), (1,2), (2,1), (2,1), (1,3), (3,1)]
-
-        #destribui os blocos detruíveis
-        for l in range(1, self.linhas-1):
-            for c in range(1, self.colunas-1):
-                if mapa[l][c] == 0 and (l,c) not in zona_seguras:
-                    if random.random() < 0.35: #35% de chance de criar um bloco detruível
-                        mapa[l][c] = 2
-
-        #os blocos de minérios destrutiveis
-        num_veios = random.randint(2, 6) #número de veios de minério
-        for _ in range(num_veios):
-            #local aleatório e distante do spawn do mike
-            lin_veio = random.randint(3, self.linhas -2)
-            col_veio = random.randint(5, self.colunas -3)
-
-            #espalha o miério ao redor desseeeeee ponto
-            tamanho_veio = random.randint(2, 4)
-            for _ in range(tamanho_veio):
-                if 0 <= lin_veio < self.linhas and 0 <= col_veio < self.colunas:
-                    #só subistitui se for chao ou bloco que explode 
-                    if mapa[lin_veio][col_veio] in [0,2]:
-                        mapa[lin_veio][col_veio] = 4 # minério
-
-                lin_veio += random.choice([-1, 0, 1]) #move o ponto do veio para criar um formato mais orgânico
-                col_veio += random.choice([-1, 0, 1])
-
-        #posiciona a saída do mapa
-        saida_definida = False
-        for l in range(self.linhas-2, 0, -1):
-            if mapa[l][self.colunas-2] != 1:
-                mapa[l][self.colunas-2] = 3 #a saida boy
-                saida_definida = True 
-                break 
-    
-        #caso de SEGURANÇAAAAAAA caso a saida seja fechada pelos blocos 
-        if not saida_definida:
-            mapa[self.linhas // 2][self.colunas-2] = 3
-
-        #validação por Flood Fill / BFS (Garante que a fase tem solução)
-        #se o caminho do Mike (1,1) até a saída (3) estiver totalmente bloqueado, gera outro mapa do zero
-
-        if not self.validar_caminho(mapa):
-            return self.gerar_fase()
-        
+ 
+    def gerar_fase(self, fase_num=1):
+        # tenta gerar até 20 vezes até passar na validação BFS
+        for _ in range(20):
+            mapa = self._gerar_tentativa(fase_num)
+            if mapa and self.validar_caminho(mapa):
+                return mapa
+        return self._gerar_fallback()
+ 
+    # --- geração ---
+ 
+    def _gerar_tentativa(self, fase_num):
+        # fases mais avançadas = cavernas mais abertas (mais espaço pra combate)
+        if   fase_num <= 3:  densidade = 0.48
+        elif fase_num <= 6:  densidade = 0.44
+        elif fase_num <= 9:  densidade = 0.40
+        else:                densidade = 0.35
+ 
+        mapa = self._gerar_ruido_inicial(densidade)
+        mapa = self._suavizar(mapa, iteracoes=4)
+        mapa = self._abrir_zona_spawn(mapa)
+        mapa = self._popular_recursos(mapa, fase_num)
+        mapa = self._posicionar_saida(mapa)
         return mapa
-    def validar_caminho(self,mapa):
-        #testa se o jogador consegue chegar na saida
-
-        linhas = len(mapa)
+ 
+    def _gerar_ruido_inicial(self, densidade_parede=0.45):
+        # preenche aleatoriamente — bordas são sempre parede
+        mapa = []
+        for l in range(self.linhas):
+            linha = []
+            for c in range(self.colunas):
+                borda = (l == 0 or l == self.linhas - 1
+                         or c == 0 or c == self.colunas - 1)
+                linha.append(1 if borda or random.random() < densidade_parede else 0)
+            mapa.append(linha)
+        return mapa
+ 
+    def _suavizar(self, mapa, iteracoes=4):
+        # cellular automata: célula com >= 5 vizinhos parede vira parede, senão vira chão
+        # repetindo isso N vezes o ruído vai virando formas orgânicas
+        for _ in range(iteracoes):
+            novo = [linha[:] for linha in mapa]
+            for l in range(1, self.linhas - 1):
+                for c in range(1, self.colunas - 1):
+                    if self._vizinhos_parede(mapa, l, c) >= 5:
+                        novo[l][c] = 1
+                    else:
+                        novo[l][c] = 0
+            mapa = novo
+        return mapa
+ 
+    def _vizinhos_parede(self, mapa, l, c):
+        # conta os 8 vizinhos (diagonais incluídas)
+        count = 0
+        for dl in [-1, 0, 1]:
+            for dc in [-1, 0, 1]:
+                if dl == 0 and dc == 0:
+                    continue
+                nl, nc = l + dl, c + dc
+                if 0 <= nl < self.linhas and 0 <= nc < self.colunas:
+                    count += mapa[nl][nc] == 1
+                else:
+                    count += 1  # fora do mapa conta como parede
+        return count
+ 
+    def _abrir_zona_spawn(self, mapa):
+        # garante 3x3 limpo no canto superior esquerdo pro Mike aparecer
+        for l in range(1, 4):
+            for c in range(1, 4):
+                mapa[l][c] = 0
+        return mapa
+ 
+    def _popular_recursos(self, mapa, fase_num):
+        # pedras ficam mais esparsas nos biomas avançados
+        if   fase_num <= 3:  chance_pedra = 0.25
+        elif fase_num <= 6:  chance_pedra = 0.20
+        elif fase_num <= 9:  chance_pedra = 0.15
+        else:                chance_pedra = 0.10
+ 
+        zona_segura = {(l, c) for l in range(1, 5) for c in range(1, 5)}
+ 
+        for l in range(1, self.linhas - 1):
+            for c in range(1, self.colunas - 1):
+                if mapa[l][c] == 0 and (l, c) not in zona_segura:
+                    if random.random() < chance_pedra:
+                        mapa[l][c] = 2
+ 
+        # veios de minério — caminha aleatoriamente pra ficar orgânico
+        for _ in range(random.randint(2, 5)):
+            l_v = random.randint(4, self.linhas - 3)
+            c_v = random.randint(5, self.colunas - 4)
+            for _ in range(random.randint(2, 5)):
+                if 0 <= l_v < self.linhas and 0 <= c_v < self.colunas:
+                    if mapa[l_v][c_v] in [0, 2]:
+                        mapa[l_v][c_v] = 4
+                l_v = max(1, min(self.linhas - 2,  l_v + random.choice([-1, 0, 1])))
+                c_v = max(1, min(self.colunas - 2, c_v + random.choice([-1, 0, 1])))
+ 
+        return mapa
+ 
+    def _posicionar_saida(self, mapa):
+        # saída em chão livre longe do spawn (metade direita/inferior do mapa)
+        candidatas = [
+            (l, c)
+            for l in range(self.linhas)
+            for c in range(self.colunas)
+            if mapa[l][c] == 0
+            and abs(l - 1) + abs(c - 1) >= 8
+            and l >= self.linhas  // 3
+            and c >= self.colunas // 3
+        ]
+ 
+        if candidatas:
+            l_s, c_s = random.choice(candidatas)
+            mapa[l_s][c_s] = 3
+        else:
+            # fallback: varre de baixo pra cima na última coluna
+            for l in range(self.linhas - 2, 0, -1):
+                if mapa[l][self.colunas - 2] != 1:
+                    mapa[l][self.colunas - 2] = 3
+                    break
+ 
+        return mapa
+ 
+    def _gerar_fallback(self):
+        # mapa simples garantido caso o CA falhe 20 vezes seguidas (raro)
+        mapa = [[0] * self.colunas for _ in range(self.linhas)]
+        for l in range(self.linhas):
+            for c in range(self.colunas):
+                if l == 0 or l == self.linhas - 1 or c == 0 or c == self.colunas - 1:
+                    mapa[l][c] = 1
+        for l in range(3, self.linhas - 2):
+            for c in range(5, self.colunas - 3):
+                if random.random() < 0.15:
+                    mapa[l][c] = 2
+        mapa[self.linhas - 2][self.colunas - 2] = 3
+        return mapa
+ 
+    # --- validação ---
+ 
+    def validar_caminho(self, mapa):
+        # BFS do spawn (1,1) até a saída (tile 3)
+        # pedras (2 e 4) são passáveis porque o Mike pode destruí-las
+        linhas  = len(mapa)
         colunas = len(mapa[0])
-        visitados = [[False for _ in range(colunas)] for _ in range(linhas)]
-
-        #fila de busca pose do mike (1,1)
+        visitados = [[False] * colunas for _ in range(linhas)]
+ 
         fila = [(1, 1)]
         visitados[1][1] = True
-        
+ 
         while fila:
             l, c = fila.pop(0)
-
-            # se a buscar alcançou a saida, o layout é válido
             if mapa[l][c] == 3:
                 return True
-
-            #checar os 4 lados
-            for dl, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:   
-                nl = l + dl
-                nc = c + dc
-
+            for dl, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                nl, nc = l + dl, c + dc
                 if 0 <= nl < linhas and 0 <= nc < colunas:
-                    ## o algoritmo pode atravessa tudos, menos as paredes fixas
                     if not visitados[nl][nc] and mapa[nl][nc] != 1:
                         visitados[nl][nc] = True
                         fila.append((nl, nc))
-
-
         return False
+ 
+    # --- utilitário ---
+ 
+    def listar_chao_livre(self, mapa, excluir_raio=0, origem=(1, 1)):
+        # retorna coordenadas de chão livre fora do raio de distância da origem
+        ol, oc = origem
+        return [
+            (l, c)
+            for l in range(1, len(mapa) - 1)
+            for c in range(1, len(mapa[0]) - 1)
+            if mapa[l][c] == 0 and abs(l - ol) + abs(c - oc) > excluir_raio
+        ]
+ 
     
 
         
