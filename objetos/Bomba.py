@@ -3,7 +3,7 @@ import pygame
 class Bomba:
     def __init__(self, x, y):
         self.rect = pygame.Rect(x, y, 50, 50)
-        self.tempo_explosao = 240   # 4 segundos a 60fps
+        self.tempo_explosao = 180   # 4 segundos a 60fps
         self.cor = (0, 0, 0)
         self.explodiu = False
         self.solida = False         # Vira sólida após o player sair de cima
@@ -34,14 +34,19 @@ class Bomba:
 
         for d_lin, d_col in alcance:
             alvo_l = lin + d_lin
-            alvo_c = col + d_col
+            alvo_c = col + d_col        
 
             if 0 <= alvo_l < len(mapa) and 0 <= alvo_c < len(mapa[0]):
                 explosao_rect = pygame.Rect(alvo_c * 50, alvo_l * 50, 50, 50)
 
-                # Destruir minério
-                if mapa[alvo_l][alvo_c] == 2:
-                    mapa[alvo_l][alvo_c] = 0
+                if mapa[alvo_l][alvo_c] in [2,4]:
+
+                 # Destruir minério
+                   if mapa[alvo_l][alvo_c] == 4:
+                         print("Minério destruído!")
+                   else: 
+                         print("Bloco comum destruído!")
+                   mapa[alvo_l][alvo_c] = 0
 
                 # Dano no Player
                 if player.rect.colliderect(explosao_rect):

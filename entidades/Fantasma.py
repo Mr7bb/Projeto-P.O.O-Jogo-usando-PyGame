@@ -57,7 +57,7 @@ class Fantasma(Inimigo):
         return False
 
     #Sobrescrita do método abstrato da classe mãe
-    def mover(self, player, paredes, mapa=None):
+    def mover(self, player, paredes, mapa=None, bombas=None):
         pos_antiga_x = self.rect.x
         pos_antiga_y = self.rect.y
 
@@ -71,7 +71,10 @@ class Fantasma(Inimigo):
             elif self.rect.x > player.rect.x: self.rect.x -= self.velocidade
             if mapa and self._colidiu_com_parede_solida(mapa):
                 self.rect.x = pos_antiga_x  # Reverte só X
-
+            if bombas:
+                for  b in  bombas:
+                    if b.solida and self.rect.colliderect(b.rect):
+                        self.rect.x = pos_antiga_x
             # Atualiza pos_antiga_y após resolver X
             pos_antiga_y = self.rect.y
 
@@ -80,7 +83,10 @@ class Fantasma(Inimigo):
             elif self.rect.y > player.rect.y: self.rect.y -= self.velocidade
             if mapa and self._colidiu_com_parede_solida(mapa):
                 self.rect.y = pos_antiga_y  # Reverte só Y
-
+            if bombas:
+                for  b in  bombas:
+                    if b.solida and self.rect.colliderect(b.rect):
+                        self.rect.x = pos_antiga_y
         # MODO NORMAL: movimento aleatório, respeita todas as paredes
         else:
             self.cor = Fantasma.COR_NORMAL
@@ -96,6 +102,13 @@ class Fantasma(Inimigo):
                     self.rect.y = pos_antiga_y
                     self.direcao = random.choice(['cima', 'baixo', 'esquerda', 'direita'])
                     break
+            if bombas:
+                for b in bombas:
+                    if b.solida and self.rect.colliderect(b.rect):
+                        self.rect.x =  pos_antiga_x
+                        self.rect.y =  pos_antiga_y
+                        self.direcao = random.choice(['cima', 'baixo', 'esquerda', 'direita'])
+                        break
 
             self.contador_passos += 1
             if self.contador_passos > 60:
