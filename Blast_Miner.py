@@ -108,8 +108,21 @@ class BlastMiner:
                         lin = self.player.rect.centery // TELA_SIZE
                         self.bombas.append(Bomba(col * TELA_SIZE, lin * TELA_SIZE))
                         self.player.plantar_bomba()
+                if event.key == pygame.K_f:
+                    if self.player.pode_atacar():
+                        self.player.iniciar_ataque()
  
         self.player.controlar(self.paredes, self.bombas)
+        if self.player.rect_ataque:
+            for inimigo in self.inimigos:
+                if inimigo.ativo and inimigo.rect.colliderect(self.player.rect_ataque):
+                    if not inimigo._atingido_este_swing:
+                        inimigo.receber_dano_espada(self.player.ATAQUE_DANO, self.player.rect)
+                        inimigo._atingido_este_swing = True
+                        self.player.flash_impacto()
+        if self.player.ataque_timer <= 0:
+            for inimigo in self.inimigos:
+                inimigo._atingido_este_swing = False
         if self.player.invencivel_timer > 0:
             self.player.invencivel_timer -= 1
  
@@ -209,7 +222,9 @@ class BlastMiner:
  
         for inimigo in self.inimigos:
             inimigo.desenhar(self.tela)
- 
+        
+        self.player.desenhar_espada(self.tela)
+
         if self.player.invencivel_timer % 4 < 2:
             pygame.draw.rect(self.tela, (255, 200, 0), self.player.rect)
  
