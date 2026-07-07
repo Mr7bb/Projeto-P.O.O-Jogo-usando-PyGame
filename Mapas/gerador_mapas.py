@@ -8,11 +8,26 @@ import random
 # 4 = minério (quebrável)
  
 class GeradorProcedural:
-    def __init__(self, linhas=18, colunas=24):
-        self.linhas  = linhas
-        self.colunas = colunas
+    # tamanho base; cada fase adiciona +2 linhas e +3 colunas até um limite
+    LINHAS_BASE  = 18
+    COLUNAS_BASE = 24
+    LINHAS_MAX   = 36
+    COLUNAS_MAX  = 52
+ 
+    def __init__(self):
+        self.linhas  = self.LINHAS_BASE
+        self.colunas = self.COLUNAS_BASE
+ 
+    def _dimensoes_para_fase(self, fase_num):
+        """Cresce o mapa progressivamente a cada fase."""
+        crescimento = fase_num - 1
+        linhas  = min(self.LINHAS_BASE  + crescimento * 2, self.LINHAS_MAX)
+        colunas = min(self.COLUNAS_BASE + crescimento * 3, self.COLUNAS_MAX)
+        return linhas, colunas
  
     def gerar_fase(self, fase_num=1):
+        self.linhas, self.colunas = self._dimensoes_para_fase(fase_num)
+        print(f"[MAPA] Fase {fase_num} — {self.linhas}x{self.colunas}")
         # tenta gerar até 20 vezes até passar na validação BFS
         for _ in range(20):
             mapa = self._gerar_tentativa(fase_num)
@@ -184,10 +199,3 @@ class GeradorProcedural:
             for c in range(1, len(mapa[0]) - 1)
             if mapa[l][c] == 0 and abs(l - ol) + abs(c - oc) > excluir_raio
         ]
- 
-    
-
-        
-
-
-        
