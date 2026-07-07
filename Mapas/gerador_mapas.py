@@ -199,3 +199,4 @@ class GeradorProcedural:
             for c in range(1, len(mapa[0]) - 1)
             if mapa[l][c] == 0 and abs(l - ol) + abs(c - oc) > excluir_raio
         ]
+    #sdijasiodjasoidjasid
