@@ -26,7 +26,7 @@ class Golem(Inimigo):
         return (dx**2 + dy**2) ** 0.5
 
     #Sobrescrita do método abstrato da classe mãe
-    def mover(self, player, paredes, mapa=None):
+    def mover(self, player, paredes, mapa, bomba=None):
         pos_antiga_x = self.rect.x
         pos_antiga_y = self.rect.y
         distancia = self._distancia_para(player)
