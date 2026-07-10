@@ -66,9 +66,6 @@ class Inimigo:
                 self.kb_dy  = 0
                 break
 
-    def mover(self, player, paredes):
-        
-        raise NotImplementedError("Subclasses devem implementar mover()")
 
     def desenhar(self, tela):
         
