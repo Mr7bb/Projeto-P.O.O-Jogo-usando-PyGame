@@ -1,3 +1,4 @@
+
 import pygame
 import random
 from entidades.Inimigo import Inimigo
@@ -120,11 +121,12 @@ class LegiaoDeFantasmas(Fantasma):
     """Como o Fantasma Padrão, mas quando um é atingido todos entram em fúria."""
     COR_LEGIAO = (180, 100, 255)
  
-    def __init__(self, x, y, grupo=None):
+    def __init__(self, x, y, grupo):
+        # grupo é obrigatório — lista criada externamente, compartilhada por todos
         super().__init__(x, y)
         self.vida = 4
         self.cor = self.COR_LEGIAO
-        self.grupo = grupo or []  # lista com todos os membros da legião
+        self.grupo = grupo  # nunca cria lista nova aqui — sempre a mesma referência
  
     def receber_dano_explosao(self):
         super().receber_dano_explosao()
