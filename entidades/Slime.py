@@ -1,4 +1,3 @@
-
 import pygame
 import random
 from entidades.Inimigo import Inimigo
@@ -23,17 +22,16 @@ class Slime(Inimigo):
         self.ativo = False
         print("[SLIME] Destruído pela explosão!")
  
-    def receber_dano_espada(self):
-        # espada divide (apenas slimes grandes)
+    def receber_dano_espada(self, dano, player_rect):
+        # slime grande divide em vez de tomar dano
         if not self.mini and not self.dividiu:
             self.dividiu = True
             self.ativo = False
             print("[SLIME] Dividido!")
-            return True  # sinaliza pra Blast_Miner spawnar 2 mini slimes
+            return True  # sinaliza pro Blast_Miner spawnar 2 mini-slimes
         else:
-            self.vida -= 1
-            if self.vida <= 0:
-                self.ativo = False
+            # mini-slime toma dano normal
+            super().receber_dano_espada(dano, player_rect)
             return False
  
     def mover(self, player, paredes, mapa=None, bombas=None):
