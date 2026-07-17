@@ -9,7 +9,6 @@ class EstadoJogando(EstadoGame):
             if event.key == pygame.K_ESCAPE:
                 self.gerenciador.mudar_estado_imediato("pause")
             elif event.key == pygame.K_e:
-                # Verifica se há NPCs próximos para abrir diálogo por máquina de estados
                 for npc in g.npcs:
                     if npc.perto_do_player(g.player):
                         from telas.tela_estado_dialogo import EstadoDialogo

@@ -11,7 +11,7 @@ class EstadoDialogo(EstadoGame):
         if npc.tipo == "ferreiro":
             self.falas = [
                 "Saudações, operador Mike! Vejo que trouxe materiais.",
-                "Consigo aprimorar sua broca-espada e o raio de suas bombas.",
+                "Consigo aprimorar sua picareta e o raio de suas bombas.",
                 "O trabalho aqui é duro, mas justo. Vamos negociar? [ESPAÇO]"
             ]
         else:
@@ -31,6 +31,7 @@ class EstadoDialogo(EstadoGame):
                     self.gerenciador.game.tela_loja.abrir(self.npc.tipo)
                     self.gerenciador.mudar_estado_imediato("loja")
             elif event.key == pygame.K_ESCAPE:
+                # CORREÇÃO: Permite cancelar a conversa e voltar ao jogo normal
                 self.gerenciador.mudar_estado_imediato("jogo")
 
     def desenhar(self, tela):
