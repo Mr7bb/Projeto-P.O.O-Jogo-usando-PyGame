@@ -1,6 +1,6 @@
 import pygame
 from telas.tela_estado_game import EstadoGame
-
+ 
 class EstadoDialogo(EstadoGame):
     def __init__(self, gerenciador, npc):
         super().__init__(gerenciador)
@@ -21,7 +21,7 @@ class EstadoDialogo(EstadoGame):
                 "Não tema os esporos venenosos, eu tenho a cura. Veja... [ESPAÇO]"
             ]
         self.indice = 0
-
+ 
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
             if event.key in (pygame.K_RETURN, pygame.K_SPACE):
@@ -33,7 +33,7 @@ class EstadoDialogo(EstadoGame):
             elif event.key == pygame.K_ESCAPE:
                 # CORREÇÃO: Permite cancelar a conversa e voltar ao jogo normal
                 self.gerenciador.mudar_estado_imediato("jogo")
-
+ 
     def desenhar(self, tela):
         # Renderiza o cenário de jogo estático como fundo do diálogo
         self.gerenciador.estados_registrados["jogo"].desenhar(tela)

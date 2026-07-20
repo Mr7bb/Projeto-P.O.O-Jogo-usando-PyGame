@@ -69,4 +69,5 @@ class Lanca(Projetil):
         y2 = int(cy + ny * 10)
         pygame.draw.line(tela, self.COR, (x1, y1), (x2, y2), 3)
         pygame.draw.circle(tela, (220, 220, 180), (x2, y2), 3)
+
  
