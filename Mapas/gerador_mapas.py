@@ -1,6 +1,6 @@
 import random
 from collections import deque
- 
+
 # tiles:
 # 0 = chão
 # 1 = parede (inquebrável)
@@ -8,23 +8,24 @@ from collections import deque
 # 3 = saída
 # 4 = minério (quebrável)
 # 5 = água (bloqueia movimento, inquebrável, projéteis/explosões passam)
- 
+
 class GeradorProcedural:
     LINHAS_BASE  = 18
     COLUNAS_BASE = 24
     LINHAS_MAX   = 36
     COLUNAS_MAX  = 52
- 
+    TELA_SIZE    = 50  # tamanho do tile em pixels (para calcular posicao de drops, spawn de inimigos, etc)
+
     def __init__(self):
         self.linhas  = self.LINHAS_BASE
         self.colunas = self.COLUNAS_BASE
- 
+
     def _dimensoes_para_fase(self, fase_num):
         crescimento = fase_num - 1
         linhas  = min(self.LINHAS_BASE  + crescimento * 2, self.LINHAS_MAX)
         colunas = min(self.COLUNAS_BASE + crescimento * 3, self.COLUNAS_MAX)
         return linhas, colunas
- 
+
     def gerar_fase(self, fase_num=1):
         self.linhas, self.colunas = self._dimensoes_para_fase(fase_num)
         print(f"[MAPA] Fase {fase_num} — {self.linhas}x{self.colunas}")
@@ -33,13 +34,13 @@ class GeradorProcedural:
             if mapa and self.validar_caminho(mapa):
                 return mapa
         return self._gerar_fallback()
- 
+
     def _gerar_tentativa(self, fase_num):
         if   fase_num <= 3:  densidade = 0.48
         elif fase_num <= 6:  densidade = 0.44
         elif fase_num <= 9:  densidade = 0.40
         else:                densidade = 0.35
- 
+
         mapa = self._gerar_ruido_inicial(densidade)
         mapa = self._suavizar(mapa, iteracoes=4)
         mapa = self._gerar_lagos_agua(mapa)
@@ -47,7 +48,7 @@ class GeradorProcedural:
         mapa = self._popular_recursos(mapa, fase_num)
         mapa = self._posicionar_saida(mapa)
         return mapa
- 
+
     def _gerar_ruido_inicial(self, densidade_parede=0.45):
         mapa = []
         for l in range(self.linhas):
@@ -57,7 +58,7 @@ class GeradorProcedural:
                 linha.append(1 if borda or random.random() < densidade_parede else 0)
             mapa.append(linha)
         return mapa
- 
+
     def _suavizar(self, mapa, iteracoes=4):
         for _ in range(iteracoes):
             novo = [linha[:] for linha in mapa]
@@ -69,7 +70,7 @@ class GeradorProcedural:
                         novo[l][c] = 0
             mapa = novo
         return mapa
- 
+
     def _vizinhos_parede(self, mapa, l, c):
         count = 0
         for dl in [-1, 0, 1]:

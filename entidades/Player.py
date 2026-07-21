@@ -1,5 +1,25 @@
 import pygame
 import os
+ 
+# carrega as sprites direcionais do player (baseadas na sheet que voce mandou).
+# fica cacheado num dict global porque so existe 1 player no jogo, nao precisa
+# recarregar a imagem do disco toda vez.
+_DIR_SPRITES_PLAYER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "sprites", "player")
+_SPRITES_PLAYER = {}
+ 
+def _carregar_sprites_player():
+    if _SPRITES_PLAYER: return  # ja carregou antes, nao repete
+    nomes = {'baixo': 'idle_baixo', 'cima': 'idle_cima', 'esquerda': 'idle_esquerda', 'direita': 'idle_direita'}
+    for direcao, arquivo in nomes.items():
+        caminho = os.path.join(_DIR_SPRITES_PLAYER, f"{arquivo}.png")
+        try:
+            img = pygame.image.load(caminho).convert_alpha()
+            # a sprite fica um pouco maior que a hitbox (56x56 vs hitbox 40x40), fica
+            # mais bonito visualmente sem mudar a colisao
+            _SPRITES_PLAYER[direcao] = pygame.transform.smoothscale(img, (56, 56))
+        except Exception as e:
+            print(f"[SPRITE PLAYER] nao consegui carregar {caminho}: {e}")
+ 
 class Player:
     HP_MAX_BASE = 2000
     DANO_PICARETA = {
@@ -36,7 +56,9 @@ class Player:
         self.picareta_rect        = None
         self.PICARETA_DURACAO     = 12
         self.PICARETA_COOLDOWN    = 12
-        self.PICARETA_ALCANCE     = 55
+        # alcance 55 -> 75: pedido pra melhorar o alcance da espada/picareta, que
+        # tava curto de mais. aumento moderado (nao dobrou), so deu mais margem
+        self.PICARETA_ALCANCE     = 75
         
         self.BOMBA_COOLDOWN_BASE  = 240
         self.max_bombas           = 2
@@ -56,18 +78,41 @@ class Player:
     @property
     def hp_pct(self): return max(0.0, self.hp / self.hp_max)
  
-    def controlar(self, paredes, bombas):
+    def desenhar(self, tela, cam_x=0, cam_y=0):
+        """
+        desenha o player usando a sprite da direcao que ele ta olhando. antes o
+        Blast_Miner.py desenhava um retangulo amarelo direto, sem sprite nenhuma.
+        o pisca-pisca de quando toma dano (invencivel_timer) continua igual: alguns
+        frames ele simplesmente nao desenha nada, criando o efeito de piscar.
+        """
+        _carregar_sprites_player()
+        r = pygame.Rect(self.rect.x - cam_x, self.rect.y - cam_y, self.rect.width, self.rect.height)
+ 
+        if self.invencivel_timer > 0 and self.invencivel_timer % 4 >= 2:
+            return  # esse frame fica "apagado" de proposito (efeito de piscar)
+ 
+        sprite = _SPRITES_PLAYER.get(self.direcao_face)
+        if sprite:
+            tela.blit(sprite, sprite.get_rect(center=r.center))
+        else:
+            # se por algum motivo a sprite nao carregou, cai pro retangulo antigo
+            pygame.draw.rect(tela, (255, 200, 0), r)
+ 
+    def controlar(self, paredes, bombas, mult_velocidade=1.0):
         # move um eixo por vez (x depois y) e desfaz o movimento se colidir.
         # fazer separado por eixo evita o bug classico de "grudar" na quina de uma parede
         # quando anda na diagonal.
+        # mult_velocidade: usado pelo Lodo Corrosivo do boss Gruk (reduz a velocidade
+        # enquanto o player pisa na poca). 1.0 = velocidade normal.
         pos_antiga_x, pos_antiga_y = self.rect.x, self.rect.y
         teclas = pygame.key.get_pressed()
+        vel = self.velocidade * mult_velocidade
  
         if teclas[pygame.K_a]:
-            self.rect.x -= self.velocidade
+            self.rect.x -= vel
             self.direcao_face = 'esquerda'
         if teclas[pygame.K_d]:
-            self.rect.x += self.velocidade
+            self.rect.x += vel
             self.direcao_face = 'direita'
         for p in paredes:
             if self.rect.colliderect(p): self.rect.x = pos_antiga_x
@@ -75,10 +120,10 @@ class Player:
             if b.solida and self.rect.colliderect(b.rect): self.rect.x = pos_antiga_x
  
         if teclas[pygame.K_w]:
-            self.rect.y -= self.velocidade
+            self.rect.y -= vel
             self.direcao_face = 'cima'
         if teclas[pygame.K_s]:
-            self.rect.y += self.velocidade
+            self.rect.y += vel
             self.direcao_face = 'baixo'
         for p in paredes:
             if self.rect.colliderect(p): self.rect.y = pos_antiga_y
@@ -106,7 +151,7 @@ class Player:
         return self.picareta_rect
  
     def _calcular_hitbox(self):
-        al, larg = self.PICARETA_ALCANCE, 50
+        al, larg = self.PICARETA_ALCANCE, 58  # largura 50 -> 58, acompanha o aumento de alcance
         cx, cy = self.rect.centerx, self.rect.centery
         if self.direcao_face == 'cima': return pygame.Rect(cx - larg // 2, cy - al - self.rect.height // 2, larg, al)
         elif self.direcao_face == 'baixo': return pygame.Rect(cx - larg // 2, cy + self.rect.height // 2, larg, al)
@@ -161,4 +206,3 @@ class Player:
             for b in bombas:
                 if b.solida and self.rect.colliderect(b.rect): self.rect.y -= dy; dy = 0; break
             if dx == 0 and dy == 0: break
-

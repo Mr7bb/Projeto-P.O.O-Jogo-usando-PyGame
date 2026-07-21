@@ -12,8 +12,9 @@ from entidades.Cogumelos import CogumeloEsporos, CogumeloAgressivo
 from entidades.Goblin import Goblin
 from entidades.Slime import Slime
 from entidades.NPC import NPC
+from entidades.Bosses import Boss, EcoPerdido, Gruk, Mykros, Guardiao, CoracaoDaMina
 from objetos.Bomba import Bomba
-from objetos.Projetil import Esporo, Lanca
+from objetos.Projetil import Esporo, Lanca, PicaretaFantasma
 from objetos.Inventario import Inventario
 from objetos.Drops import gerar_drops_mob
 from objetos.Item import ITENS
@@ -54,19 +55,27 @@ def _ultima_fase_do_bioma(fase_num):
 def _tabela_spawns(fase_num):
     if fase_num == 1:   return [(Fantasma, 2, 3)]
     elif fase_num == 2: return [(Fantasma, 4, 6)]
-    elif fase_num == 3: return [(Fantasma, 3, 4), (LegiaoDeFantasmas, 3, 4)]
+    # fase 3 = ultima fase do bioma 1 = sala do boss "O Eco Perdido" (sozinho,
+    # igual o Manual de Design de Bosses descreve: nenhum boss deve ser so mais
+    # um mob no meio da fase, ele e o combate inteiro)
+    elif fase_num == 3: return [(EcoPerdido, 1, 1)]
     # pedido: bem mais slime no bioma dos goblins/slimes (fases 4 a 6)
     elif fase_num == 4: return [(Goblin, 3, 4), (Slime, 6, 8)]
     elif fase_num == 5: return [(Goblin, 4, 5), (Slime, 7, 9), (Fantasma, 2, 3)]
-    elif fase_num == 6: return [(Goblin, 5, 6), (Slime, 8, 10), (Fantasma, 3, 4), (LegiaoDeFantasmas, 1, 2)]
+    # fase 6 = ultima fase do bioma 2 = sala do boss "Gruk, o Senhor da Mina Verde"
+    elif fase_num == 6: return [(Gruk, 1, 1)]
     elif fase_num == 7: return [(CogumeloEsporos, 2, 3), (CogumeloAgressivo, 2, 3)]
     elif fase_num == 8: return [(CogumeloEsporos, 3, 4), (CogumeloAgressivo, 3, 4), (Goblin, 2, 3), (Slime, 2, 3)]
-    elif fase_num == 9: return [(CogumeloEsporos, 3, 4), (CogumeloAgressivo, 2, 3), (Goblin, 2, 3), (Slime, 2, 3), (Fantasma, 2, 3)]
+    # fase 9 = ultima fase do bioma 3 = sala do boss "Mykros, o Coracao da Colonia"
+    elif fase_num == 9: return [(Mykros, 1, 1)]
     # pedido: fases finais mais cheias e com mais variedade. golem de lava entra aqui,
     # no mesmo bioma do golem comum
     elif fase_num == 10: return [(Golem, 3, 4), (GolemLava, 1, 2), (Fantasma, 2, 3)]
     elif fase_num == 11: return [(Golem, 4, 5), (GolemLava, 1, 2), (Fantasma, 2, 3), (Slime, 3, 4), (CogumeloEsporos, 1, 2)]
-    elif fase_num == 12: return [(Golem, 3, 4), (GolemLava, 2, 3), (Fantasma, 2, 3), (Goblin, 2, 3), (Slime, 3, 4), (CogumeloEsporos, 2, 2), (CogumeloAgressivo, 2, 2)]
+    # fase 12 = ultima fase do bioma 4 = sala do boss "O Guardiao"
+    elif fase_num == 12: return [(Guardiao, 1, 1)]
+    # fase 13 = bioma 5 (Nucleo Vulcanico) = chefe final "O Coracao da Mina"
+    elif fase_num == 13: return [(CoracaoDaMina, 1, 1)]
     else:               return [(Golem, 3, 4), (GolemLava, 2, 3), (Fantasma, 3, 4), (Goblin, 2, 3), (Slime, 2, 3)] 
  
 class GerenciadorEstados:
@@ -217,7 +226,16 @@ class BlastMiner:
  
     def _processar_frames_jogo(self):
         if self.player.invencivel_timer > 0: self.player.invencivel_timer -= 1
-        self.player.controlar(self.paredes, self.bombas)
+ 
+        # Lodo Corrosivo (boss Gruk): se o player estiver em cima de uma poca de lodo,
+        # reduz a velocidade dele em 40% nesse frame
+        mult_velocidade = 1.0
+        for inimigo in self.inimigos:
+            if isinstance(inimigo, Gruk):
+                for poca in inimigo.pocas_lodo:
+                    if poca["rect"].colliderect(self.player.rect):
+                        mult_velocidade = 0.6
+        self.player.controlar(self.paredes, self.bombas, mult_velocidade)
  
         # veneno (esporo) e fogo (golem de lava) sao os 2 status de dano ao longo do tempo.
         # _veneno_timer/_fogo_timer ja nascem zerados no Player.__init__ agora, entao nao
@@ -249,7 +267,27 @@ class BlastMiner:
                 for ox, oy, ax, ay in inimigo.projeteis_pendentes:
                     if isinstance(inimigo, CogumeloEsporos): self.projeteis.append(Esporo(ox, oy, ax, ay))
                     elif isinstance(inimigo, Goblin): self.projeteis.append(Lanca(ox, oy, ax, ay))
+                    elif isinstance(inimigo, EcoPerdido): self.projeteis.append(PicaretaFantasma(ox, oy, ax, ay))
                 inimigo.projeteis_pendentes.clear()
+ 
+            # invocacoes dos bosses (Invocacao dos Perdidos, Invocar Slimes, Cogumelos
+            # Parasitas, etc): cada boss so guarda as posicoes pendentes, quem cria o
+            # mob de verdade e o jogo, igual ja acontecia com os projeteis acima
+            if hasattr(inimigo, 'invocacoes_pendentes') and inimigo.invocacoes_pendentes:
+                for ix, iy in inimigo.invocacoes_pendentes:
+                    reforco = None
+                    if isinstance(inimigo, EcoPerdido): reforco = Fantasma(ix, iy)
+                    elif isinstance(inimigo, Gruk): reforco = Slime(ix, iy, mini=True)
+                    elif isinstance(inimigo, Mykros):
+                        reforco = CogumeloEsporos(ix, iy)
+                        inimigo.parasitas_vivos.append(reforco)
+                    elif isinstance(inimigo, CoracaoDaMina): reforco = Goblin(ix, iy)
+                    if reforco: novos_slimes.append(reforco)
+                inimigo.invocacoes_pendentes.clear()
+ 
+            # bosses: atualiza os golpes em area telegrafados (cada um decide sozinho
+            # quando disparar um golpe novo dentro do proprio atualizar_ataques)
+            if isinstance(inimigo, Boss): inimigo.atualizar_ataques(self.player, self.paredes, self.mapa)
  
             if hitbox_picareta and not inimigo._atingindo_esse_swing and inimigo.rect.colliderect(hitbox_picareta):
                 inimigo._atingindo_esse_swing = True
@@ -318,6 +356,9 @@ class BlastMiner:
             inimigo.rect = pygame.Rect(inimigo.rect.x - self.cam_x, inimigo.rect.y - self.cam_y, inimigo.rect.width, inimigo.rect.height)
             inimigo.desenhar(self.tela)
             inimigo.rect = ro
+            if isinstance(inimigo, Boss):
+                inimigo.desenhar_extra(self.tela, self.cam_x, self.cam_y)
+                inimigo.desenhar_ataques(self.tela, self.cam_x, self.cam_y)
  
         self.player.desenhar(self.tela, self.cam_x, self.cam_y)
  
@@ -392,6 +433,7 @@ class BlastMiner:
         if self.saida_aberta: self.tela.blit(fonte.render("✔ SAÍDA ABERTA — aproxime-se de um NPC e aprete [E]", True, (80, 255, 120)), (LARGURA//2 - 250, 40))
         self.tela.blit(fonte_p.render(f"Inimigos: {len(self.inimigos)}", True, (255, 100, 100) if len(self.inimigos) > 0 else (100, 255, 100)), (LARGURA - 130, 10))
         self._desenhar_barra_status()
+        self._desenhar_barra_boss()
         
         # ALTERAÇÃO: Inventário agora desenha de forma fixa e permanente na tela
         self._desenhar_inventario_hud()
@@ -403,6 +445,24 @@ class BlastMiner:
         for icone, label, nivel, maximo in items:
             self.tela.blit(fonte.render(f"{icone} {label}: {'■'*nivel}{'□'*(maximo-nivel)}", True, (200, 200, 255)), (sx, sy))
             sy += 22
+ 
+    def _desenhar_barra_boss(self):
+        # procura um boss vivo entre os inimigos da fase e desenha a barra de vida
+        # grande e centralizada no topo, no estilo classico de luta contra chefe
+        boss = next((i for i in self.inimigos if isinstance(i, Boss) and i.ativo), None)
+        if not boss: return
+ 
+        bl, ba = 480, 26
+        bx, by = LARGURA // 2 - bl // 2, 60
+        pct = max(0.0, boss.vida / boss.vida_max)
+ 
+        nome = self._fonte_hud.render(boss.NOME_EXIBICAO, True, (255, 220, 220))
+        self.tela.blit(nome, (LARGURA // 2 - nome.get_width() // 2, by - 24))
+ 
+        pygame.draw.rect(self.tela, (40, 10, 10), (bx, by, bl, ba), border_radius=4)
+        fw = int(bl * pct)
+        if fw > 0: pygame.draw.rect(self.tela, (200, 40, 40), (bx, by, fw, ba), border_radius=4)
+        pygame.draw.rect(self.tela, (255, 255, 255), (bx, by, bl, ba), 2, border_radius=4)
  
     def _desenhar_inventario_hud(self):
         """
@@ -494,4 +554,3 @@ class BlastMiner:
 if __name__ == "__main__":
     jogo = BlastMiner()
     jogo.executar()
-

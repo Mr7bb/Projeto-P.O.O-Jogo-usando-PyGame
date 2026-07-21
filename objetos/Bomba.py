@@ -37,8 +37,10 @@ class Bomba:
         col = self.rect.centerx // TELA_SIZE
         lin = self.rect.centery // TELA_SIZE
  
-        # alcance base + extra por upgrade
-        raio = 1 + self.alcance_extra
+        # alcance base + extra por upgrade. base 1 -> 2: a bomba tava fraca de mais
+        # (losango de 5 blocos so), com 2 ela cobre uma area bem mais util sem virar
+        # a arma principal do jogo (a picareta continua sendo o dano confiavel)
+        raio = 2 + self.alcance_extra
         alcance = []
         for dl in range(-raio, raio + 1):
             for dc in range(-raio, raio + 1):

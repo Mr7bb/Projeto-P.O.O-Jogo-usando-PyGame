@@ -29,9 +29,11 @@ class Inimigo:
         self.direcao_patrulha = random.choice(['cima', 'baixo', 'esquerda', 'direita'])
         self.passos_patrulha = 0
  
-    def receber_dano_explosao(self):
-        # dano causado pela bomba. cada explosao tira 1 "hp" do mob
-        self.vida -= 1
+    def receber_dano_explosao(self, dano=2):
+        # dano causado pela bomba. antes toda explosao tirava so 1 "hp" do mob, o que
+        # deixava a bomba fraca de mais (pedido do Marquito pra melhorar isso um pouco,
+        # sem virar arma de matar tudo num golpe so). agora tira 2 por padrao.
+        self.vida -= dano
         print(f"[{self.__class__.__name__}] Atingido! Vida restante: {self.vida}")
         if self.vida <= 0:
             self.ativo = False

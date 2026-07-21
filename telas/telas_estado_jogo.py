@@ -1,6 +1,6 @@
 import pygame
 from telas.tela_estado_game import EstadoGame
- 
+
 class EstadoJogando(EstadoGame):
     def handle_event(self, event):
         g = self.gerenciador.game
@@ -15,7 +15,7 @@ class EstadoJogando(EstadoGame):
                         self.gerenciador.estados_registrados["dialogo"] = EstadoDialogo(self.gerenciador, npc)
                         self.gerenciador.mudar_estado_imediato("dialogo")
                         return
- 
+
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
                 g.player.atacar()
@@ -26,9 +26,9 @@ class EstadoJogando(EstadoGame):
                     from objetos.Bomba import Bomba
                     g.bombas.append(Bomba(col * 50, lin * 50, g.player.nivel_bomba_alcance))
                     g.player.plantar_bomba()
- 
+
     def atualizar(self):
         self.gerenciador.game._processar_frames_jogo()
- 
+
     def desenhar(self, tela):
         self.gerenciador.game._desenhar_jogo()

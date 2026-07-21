@@ -13,6 +13,14 @@ DROPS_MOBS = {
     "Slime":             [("Gosma", 0.80), ("Musgo", 0.60)],
     "Golem":             [("Musgo", 0.70), ("Minerio Comum", 0.80), ("Minerio Raro", 0.15)],
     "GolemLava":         [("Musgo", 0.70), ("Minerio Comum", 0.80), ("Minerio Raro", 0.15)],  # pedido: mesmo drop do golem comum
+ 
+    # bosses (Manual de Design de Bosses): drop garantido, reaproveitando os itens
+    # ja existentes no jogo em vez de criar itens novos so pra esses 5 casos
+    "EcoPerdido":   [("Essencia Fantasmal", 1.0), ("Plasma", 1.0)],
+    "Gruk":         [("Gosma", 1.0), ("Olho de Goblin", 1.0), ("Musgo", 0.7)],
+    "Mykros":       [("Nucleo de Esporos", 1.0), ("Chapeu de Cogumelo", 1.0), ("Esporos", 1.0)],
+    "Guardiao":     [("Cristais", 1.0), ("Minerio Raro", 1.0), ("Musgo", 0.5)],
+    "CoracaoDaMina": [("Minerio Raro", 1.0), ("Cristais", 1.0), ("Essencia Fantasmal", 1.0)],
 }
  
 # drops de tiles destruídos pela bomba
