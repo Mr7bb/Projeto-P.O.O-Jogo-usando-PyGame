@@ -55,7 +55,7 @@ class Player:
         self.picareta_timer       = 0
         self.picareta_rect        = None
         self.PICARETA_DURACAO     = 12
-        self.PICARETA_COOLDOWN    = 12
+        self.PICARETA_COOLDOWN    = 10
         # alcance 55 -> 75: pedido pra melhorar o alcance da espada/picareta, que
         # tava curto de mais. aumento moderado (nao dobrou), so deu mais margem
         self.PICARETA_ALCANCE     = 75
