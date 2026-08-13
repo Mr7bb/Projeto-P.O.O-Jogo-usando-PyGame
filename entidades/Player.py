@@ -1,24 +1,48 @@
 import pygame
 import os
  
-# carrega as sprites direcionais do player (baseadas na sheet que voce mandou).
-# fica cacheado num dict global porque so existe 1 player no jogo, nao precisa
-# recarregar a imagem do disco toda vez.
+# carrega as sprites direcionais do player.
+# a pasta nova do mineiro fica fora do projeto, entao usamos fallback para as
+# pastas antigas caso ela nao exista no ambiente atual.
 _DIR_SPRITES_PLAYER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "sprites", "player")
+_DIR_SPRITES_MINEIRO = os.path.normpath(r"C:\Users\20251101110001\Downloads\sprites mineiro")
 _SPRITES_PLAYER = {}
- 
+
+
+def _pasta_sprites_player():
+    for pasta in (_DIR_SPRITES_MINEIRO, _DIR_SPRITES_PLAYER):
+        if os.path.isdir(pasta):
+            return pasta
+    return _DIR_SPRITES_PLAYER
+
+
 def _carregar_sprites_player():
-    if _SPRITES_PLAYER: return  # ja carregou antes, nao repete
-    nomes = {'baixo': 'idle_baixo', 'cima': 'idle_cima', 'esquerda': 'idle_esquerda', 'direita': 'idle_direita'}
-    for direcao, arquivo in nomes.items():
-        caminho = os.path.join(_DIR_SPRITES_PLAYER, f"{arquivo}.png")
-        try:
-            img = pygame.image.load(caminho).convert_alpha()
-            # a sprite fica um pouco maior que a hitbox (56x56 vs hitbox 40x40), fica
-            # mais bonito visualmente sem mudar a colisao
-            _SPRITES_PLAYER[direcao] = pygame.transform.smoothscale(img, (56, 56))
-        except Exception as e:
-            print(f"[SPRITE PLAYER] nao consegui carregar {caminho}: {e}")
+    if _SPRITES_PLAYER:
+        return
+
+    pasta = _pasta_sprites_player()
+    nomes_por_direcao = {
+        'baixo': ['idle_front.png', 'walk_front.png', 'front.png', 'mineiro.png'],
+        'cima': ['idle_back.png', 'walk_back.png', 'back.png', 'mineiro.png'],
+        'esquerda': ['idle_left.png', 'walk_left.png', 'left.png', 'mineiro.png'],
+        'direita': ['idle_right.png', 'walk_right.png', 'right.png', 'mineiro.png'],
+    }
+
+    for direcao, nomes in nomes_por_direcao.items():
+        for nome in nomes:
+            caminho = os.path.join(pasta, nome)
+            if not os.path.exists(caminho):
+                continue
+            try:
+                img = pygame.image.load(caminho).convert_alpha()
+                # a sprite fica um pouco maior que a hitbox (56x56 vs hitbox 40x40)
+                _SPRITES_PLAYER[direcao] = pygame.transform.smoothscale(img, (56, 56))
+                break
+            except Exception as e:
+                print(f"[SPRITE PLAYER] nao consegui carregar {caminho}: {e}")
+
+    if not _SPRITES_PLAYER:
+        print(f"[SPRITE PLAYER] nenhuma sprite encontrada em {pasta}")
  
 class Player:
     HP_MAX_BASE = 2000
