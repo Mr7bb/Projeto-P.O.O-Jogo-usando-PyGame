@@ -14,7 +14,7 @@ O objetivo principal é explorar **12 níveis de profundidade** subterrânea ger
 ---
 
 ### 4. Personagem Principal (Mike)
-O protagonista é **Mike**, um minerador dedicado e azarado da Blast Miner Co. 
+O protagonista é **Mike**, um minerador dedicado e azarado da Blast Miner Co.
 * **Movimentação:** Livre e contínua pelo cenário (abandonando a movimentação rígida presa a blocos).
 * **Atributos Iniciais:**
   * **Vida (HP):** Representada por 3 corações na interface.
@@ -26,11 +26,24 @@ O protagonista é **Mike**, um minerador dedicado e azarado da Blast Miner Co.
 ---
 
 ### 5. Inimigos e Obstáculos
-O jogo conta com um ecossistema de criaturas com comportamentos distintos e ataques telegrafados (sinais visuais antes de agir):
-* **Fantasmas:** Criaturas etéreas e persistentes. Movem-se de forma contínua e são capazes de atravessar pedras soltas para perseguir o jogador.
-* **Cogumelos:** Inimigos focados em controle de área. Fixam-se no solo e expelem esporos ou projéteis venenosos que criam zonas de perigo temporárias no chão.
-* **Golems de Pedra:** Monstros robustos e lentos. Possuem um ataque pesado de investida que aplica um violento *knockback* (empurrão) no jogador se for atingido.
-* **BOSS: O Golem de Lava (Fase 12):** Um chefe colossal que ocupa múltiplos blocos da matriz, quebra o cenário ao se mover e gera mini-golems para proteger o núcleo vulcânico.
+O jogo conta com um ecossistema atual de criaturas com comportamentos distintos, ataques telegrafados e variações de dificuldade conforme a profundidade:
+
+* **Fantasma e Legião de Fantasmas:** inimigos etéreos, rápidos e persistentes. Em fúria, perseguem o jogador diretamente e podem reforçar o grupo ao sofrer dano.
+* **Goblin:** se move em patrulha, ataca à distância com lanças e também pode recuar quando o jogador entra em alcance.
+* **Slime:** patrulha livremente e pode se dividir quando recebe dano da picareta, criando versões menores e mais agressivas.
+* **Cogumelo Esporos:** imóvel no solo, aguarda detectar o jogador e dispara esporos venenosos em área.
+* **Cogumelo Agressivo:** persegue o player, pode fazer investidas rápidas e aumenta a pressão em combate próximo.
+* **Golem:** monstro lento, resistente e forte, com dano físico pesado e *knockback* ao encostar no jogador.
+* **Golem de Lava:** versão mais poderosa do golem, com ataque de solo telegrafado, dano em área e efeito de fogo ao longo do tempo.
+
+#### 🧨 Bosses atuais
+Além dos mobs comuns, o jogo possui bosses com mecânicas próprias e fases distintas:
+
+* **Eco Perdido:** alterna entre forma fantasma e material, com invulnerabilidade temporária e ataques de sussurro/espíritos.
+* **Gruk:** boss híbrido com investida, atordoamento e invocação de slimes.
+* **Mykros:** boss de controle de zona, com chuva de esporos e ataques de área.
+* **Guardião:** boss mais defensivo e de pressão constante.
+* **Coração da Mina:** boss final de grande complexidade, com múltiplas fases e mecânicas de área e dano contínuo.
 
 ---
 
@@ -92,3 +105,44 @@ O projeto é estruturado de forma modular utilizando Programação Orientada a O
 * `entidades/inimigos.py`: Classe base `Inimigo` e suas subclasses derivadas (`Fantasma`, `Cogumelo`, `Golem`, `Boss`), gerenciando IA e tabelas de drops orgânicos.
 * `interface/hud.py`: Renderiza os corações de vida, contadores de minérios/essências e avisos de profundidade na tela.
 * `interface/lojas.py`: Gerencia os menus interativos e interfaces gráficas ao conversar com o Ferreiro ou Ambulante.
+
+---
+
+## ▶️ Como rodar o jogo
+1. Abra o terminal na pasta do projeto.
+2. Instale a dependência principal:
+
+```bash
+pip install pygame
+```
+
+3. Execute o jogo:
+
+```bash
+python main.py
+```
+
+## 🎨 Sprites do personagem
+A pasta [sprites mineiro](sprites%20mineiro) contém a sprite-sheet usada pelo protagonista. O código do jogo foi ajustado para ler a imagem única e dividir os frames automaticamente por direção do movimento.
+
+É importante manter essa pasta junto ao projeto para que a sprite funcione corretamente em qualquer máquina, sem depender do caminho absoluto do computador do autor.
+
+## 📁 Estrutura principal do projeto
+- `main.py` — entrada do jogo
+- `Blast_Miner.py` — lógica principal
+- `config.py` — configurações gerais
+- `entidades/` — player, inimigos e classes do jogo
+- `objetos/` — bombas, itens e drops
+- `telas/` — menus e telas do jogo
+- `Mapas/` — geração de mapas
+- `sprites mineiro/` — sprite-sheet do personagem
+
+## 🕹️ Controles resumidos
+- `W, A, S, D` — movimentação
+- `Espaço` — plantar bomba
+- `Mouse` / ataque — atacar
+- `Esc` — pausar
+- `E` / `F` — interagir
+
+## 📝 Observação final
+O projeto foi estruturado para funcionar com arquivos locais dentro do próprio repositório, especialmente a pasta de sprites. Isso reduz erros ao abrir o jogo em outro computador e evita dependência de caminhos fixos do sistema operacional.
