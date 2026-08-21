@@ -4,22 +4,56 @@ import os
 # carrega as sprites direcionais do player (baseadas na sheet que voce mandou).
 # fica cacheado num dict global porque so existe 1 player no jogo, nao precisa
 # recarregar a imagem do disco toda vez.
-_DIR_SPRITES_PLAYER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "sprites", "player")
+_DIR_SPRITES_PLAYER = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "assets",
+    "sprites",
+    "player",
+    "mineiro",
+)
 _SPRITES_PLAYER = {}
+_SPRITES_ATAQUE = {}
+_SPRITES_DANO = {}
  
 def _carregar_sprites_player():
-    if _SPRITES_PLAYER: return  # ja carregou antes, nao repete
-    nomes = {'baixo': 'idle_baixo', 'cima': 'idle_cima', 'esquerda': 'idle_esquerda', 'direita': 'idle_direita'}
-    for direcao, arquivo in nomes.items():
-        caminho = os.path.join(_DIR_SPRITES_PLAYER, f"{arquivo}.png")
-        try:
-            img = pygame.image.load(caminho).convert_alpha()
-            # a sprite fica um pouco maior que a hitbox (56x56 vs hitbox 40x40), fica
-            # mais bonito visualmente sem mudar a colisao
-            _SPRITES_PLAYER[direcao] = pygame.transform.smoothscale(img, (56, 56))
-        except Exception as e:
-            print(f"[SPRITE PLAYER] nao consegui carregar {caminho}: {e}")
- 
+    if _SPRITES_PLAYER:
+        return
+
+    def carregar_frames(arquivos):
+        return [
+            pygame.transform.smoothscale(
+                pygame.image.load(os.path.join(_DIR_SPRITES_PLAYER, f'{arquivo}.png')).convert_alpha(),
+                (56, 56),
+            )
+            for arquivo in arquivos
+        ]
+
+    try:
+        _SPRITES_PLAYER['direita'] = carregar_frames([f'frame_r2_c{coluna}' for coluna in range(1, 5)])
+        _SPRITES_PLAYER['esquerda'] = [
+            pygame.transform.flip(sprite, True, False)
+            for sprite in _SPRITES_PLAYER['direita']
+        ]
+        _SPRITES_PLAYER['baixo'] = carregar_frames(['frame_r1_c5', 'frame_r2_c5'])
+        _SPRITES_PLAYER['cima'] = carregar_frames(['frame_r1_c6', 'frame_r2_c6'])
+
+        _SPRITES_ATAQUE['direita'] = carregar_frames([f'frame_r3_c{coluna}' for coluna in range(1, 5)])
+        _SPRITES_ATAQUE['esquerda'] = [
+            pygame.transform.flip(sprite, True, False)
+            for sprite in _SPRITES_ATAQUE['direita']
+        ]
+        _SPRITES_ATAQUE['baixo'] = carregar_frames(['frame_r3_c5'])
+        _SPRITES_ATAQUE['cima'] = carregar_frames(['frame_r3_c6'])
+
+        _SPRITES_DANO['baixo'] = carregar_frames(['frame_r4_c5'])
+        _SPRITES_DANO['cima'] = carregar_frames(['frame_r4_c6'])
+        _SPRITES_DANO['esquerda'] = carregar_frames(['frame_r4_c7'])
+        _SPRITES_DANO['direita'] = carregar_frames(['frame_r4_c8'])
+    except pygame.error as erro:
+        _SPRITES_PLAYER.clear()
+        _SPRITES_ATAQUE.clear()
+        _SPRITES_DANO.clear()
+        print(f'[SPRITE PLAYER] nao consegui carregar as sprites: {erro}')
 class Player:
     HP_MAX_BASE = 2000
     DANO_PICARETA = {
@@ -35,8 +69,8 @@ class Player:
     DANO_PICARETA_PADRAO = 2  
  
     def __init__(self):
-        self.rect       = pygame.Rect(50, 50, 40, 40)
-        self.velocidade = 7  # velocidade base 5 -> 7 (pedido pra deixar o player mais rapido)
+        self.rect       = pygame.Rect(40, 40, 40, 40)
+        self.velocidade = 4  # velocidade base 5 -> 7 (pedido pra deixar o player mais rapido)
         self.hp_max     = self.HP_MAX_BASE
         self.hp         = self.hp_max
  
@@ -50,6 +84,10 @@ class Player:
         self.bomba_cooldown   = 0
  
         self.direcao_face         = 'baixo'
+        self.sprite_frame         = 0
+        self.sprite_timer         = 0
+        self.em_movimento         = False
+        self.SPRITE_INTERVALO      = 5
         self.picareta_cooldown    = 0
         self.picareta_ativa       = False
         self.picareta_timer       = 0
@@ -79,25 +117,29 @@ class Player:
     def hp_pct(self): return max(0.0, self.hp / self.hp_max)
  
     def desenhar(self, tela, cam_x=0, cam_y=0):
-        """
-        desenha o player usando a sprite da direcao que ele ta olhando. antes o
-        Blast_Miner.py desenhava um retangulo amarelo direto, sem sprite nenhuma.
-        o pisca-pisca de quando toma dano (invencivel_timer) continua igual: alguns
-        frames ele simplesmente nao desenha nada, criando o efeito de piscar.
-        """
         _carregar_sprites_player()
         r = pygame.Rect(self.rect.x - cam_x, self.rect.y - cam_y, self.rect.width, self.rect.height)
- 
-        if self.invencivel_timer > 0 and self.invencivel_timer % 4 >= 2:
-            return  # esse frame fica "apagado" de proposito (efeito de piscar)
- 
-        sprite = _SPRITES_PLAYER.get(self.direcao_face)
-        if sprite:
-            tela.blit(sprite, sprite.get_rect(center=r.center))
+        sprites = _SPRITES_PLAYER.get(self.direcao_face)
+        indice = self.sprite_frame
+        deslocamento_y = 0
+
+        # A reacao aparece no comeco da invencibilidade e depois permanece o pisca-pisca.
+        if self.invencivel_timer > self.PICARETA_DURACAO * 4:
+            sprites = _SPRITES_DANO.get(self.direcao_face)
+        elif self.invencivel_timer > 0 and self.invencivel_timer % 4 >= 2:
+            return
+        elif self.picareta_ativa:
+            sprites = _SPRITES_ATAQUE.get(self.direcao_face)
+            progresso = self.PICARETA_DURACAO - self.picareta_timer
+            indice = progresso * len(sprites) // self.PICARETA_DURACAO if sprites else 0
+        elif self.em_movimento:
+            deslocamento_y = -1 if self.sprite_frame % 2 else 0
+
+        if sprites:
+            sprite = sprites[min(len(sprites) - 1, indice % len(sprites))]
+            tela.blit(sprite, sprite.get_rect(center=(r.centerx, r.centery + deslocamento_y)))
         else:
-            # se por algum motivo a sprite nao carregou, cai pro retangulo antigo
             pygame.draw.rect(tela, (255, 200, 0), r)
- 
     def controlar(self, paredes, bombas, mult_velocidade=1.0):
         # move um eixo por vez (x depois y) e desfaz o movimento se colidir.
         # fazer separado por eixo evita o bug classico de "grudar" na quina de uma parede
@@ -107,6 +149,7 @@ class Player:
         pos_antiga_x, pos_antiga_y = self.rect.x, self.rect.y
         teclas = pygame.key.get_pressed()
         vel = self.velocidade * mult_velocidade
+        self.em_movimento = any(teclas[tecla] for tecla in (pygame.K_a, pygame.K_d, pygame.K_w, pygame.K_s))
  
         if teclas[pygame.K_a]:
             self.rect.x -= vel
@@ -130,6 +173,15 @@ class Player:
         for b in bombas:
             if b.solida and self.rect.colliderect(b.rect): self.rect.y = pos_antiga_y
  
+        if self.em_movimento:
+            self.sprite_timer += 1
+            if self.sprite_timer >= self.SPRITE_INTERVALO:
+                self.sprite_timer = 0
+                self.sprite_frame += 1
+        else:
+            self.sprite_frame = 0
+            self.sprite_timer = 0
+
         if self.bomba_cooldown   > 0: self.bomba_cooldown  -= 1
         if self.picareta_cooldown > 0: self.picareta_cooldown -= 1
  
@@ -142,7 +194,7 @@ class Player:
     def pode_atacar_picareta(self): return self.picareta_cooldown == 0 and not self.picareta_ativa
  
     def atacar(self):
-        """Retornado ao formato clássico: Ataca na direção em que o jogador está olhando."""
+        """Retornado ao formato clÃƒÆ’Ã‚Â¡ssico: Ataca na direÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o em que o jogador estÃƒÆ’Ã‚Â¡ olhando."""
         if not self.pode_atacar_picareta(): return None
         self.picareta_ativa    = True
         self.picareta_timer    = self.PICARETA_DURACAO
