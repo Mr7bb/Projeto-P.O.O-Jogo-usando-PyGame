@@ -2,22 +2,19 @@ import pygame
 from objetos.Item import ITENS
 
 UPGRADES_FERREIRO = [
-    {"nome": "Forca da Picareta", "attr": "nivel_forca", "custo": {"Minerio Comum": 2, "Cristais": 1}, "max": 5, "icone": "⚔", "desc": "Aumenta o dano da picareta"},
-    {"nome": "Alcance da Bomba", "attr": "nivel_bomba_alcance", "custo": {"Minerio Comum": 2, "Madeira": 2}, "max": 3, "icone": "💣", "desc": "Aumenta o raio da explosão"},
-    {"nome": "Pavio mais Rapido", "attr": "nivel_bomba_cd", "custo": {"Madeira": 3, "Minerio Raro": 1}, "max": 3, "icone": "⏱", "desc": "Reduz o cooldown da bomba"},
-    {"nome": "Segunda Bomba", "attr": "nivel_bombas_simult", "custo": {"Minerio Raro": 2, "Cristais": 2}, "max": 1, "icone": "💥", "desc": "Permite plantar 2 bombas ao mesmo tempo"},
+    {'nome': 'Forca da Picareta', 'attr': 'nivel_forca', 'custo': {'Minerio Comum': 2, 'Cristais': 1}, 'max': 5, 'icone': '[FOR]', 'desc': 'Aumenta o dano da picareta'},
+    {'nome': 'Alcance da Bomba', 'attr': 'nivel_bomba_alcance', 'custo': {'Minerio Comum': 2, 'Madeira': 2}, 'max': 3, 'icone': '[BMB]', 'desc': 'Aumenta o raio da explosao'},
+    {'nome': 'Pavio mais Rapido', 'attr': 'nivel_bomba_cd', 'custo': {'Madeira': 3, 'Minerio Raro': 1}, 'max': 3, 'icone': '[CD]', 'desc': 'Reduz o cooldown da bomba'},
+    {'nome': 'Segunda Bomba', 'attr': 'nivel_bombas_simult', 'custo': {'Minerio Raro': 2, 'Cristais': 2}, 'max': 1, 'icone': '[2X]', 'desc': 'Permite plantar 2 bombas ao mesmo tempo'},
 ]
 
 UPGRADES_AMBULANTE = [
-    {"nome": "Vida Extra", "attr": "nivel_hp", "custo": {"Essencia Fantasmal": 1, "Gosma": 2}, "max": 5, "icone": "❤", "desc": "Aumenta o HP máximo em +25"},
-    {"nome": "Velocidade", "attr": "nivel_velocidade", "custo": {"Esporos": 2, "Musgo": 2}, "max": 4, "icone": "💨", "desc": "Aumenta a velocidade de movimento"},
-    {"nome": "Imunidade a Veneno", "attr": "imune_veneno", "custo": {"Nucleo de Esporos": 1, "Chapeu de Cogumelo": 1}, "max": 1, "icone": "🛡", "desc": "Você nunca mais será envenenado"},
-    {"nome": "Escudo Temporario", "attr": "nivel_escudo", "custo": {"Gosma": 2, "Musgo": 1, "Olho de Goblin": 1}, "max": 3, "icone": "🔮", "desc": "Ganha 1 carga de escudo por fase"},
-    # pedido: um item pra recuperar hp na hora (nao so aumentar o maximo). e "consumivel":
-    # pode comprar varias vezes, nao tem "nivel" que vai subindo pra sempre igual os outros
-    {"nome": "Pocao de Cura", "attr": "curar_hp", "custo": {"Gosma": 1, "Esporos": 1}, "max": 1, "icone": "💚", "desc": "Recupera 60 de HP na hora", "consumivel": True},
+    {'nome': 'Vida Extra', 'attr': 'nivel_hp', 'custo': {'Essencia Fantasmal': 1, 'Gosma': 2}, 'max': 5, 'icone': '[HP]', 'desc': 'Aumenta o HP maximo em +25'},
+    {'nome': 'Velocidade', 'attr': 'nivel_velocidade', 'custo': {'Esporos': 2, 'Musgo': 2}, 'max': 4, 'icone': '[VEL]', 'desc': 'Aumenta a velocidade de movimento'},
+    {'nome': 'Imunidade a Veneno', 'attr': 'imune_veneno', 'custo': {'Nucleo de Esporos': 1, 'Chapeu de Cogumelo': 1}, 'max': 1, 'icone': '[VEN]', 'desc': 'Impede novos envenenamentos'},
+    {'nome': 'Escudo Temporario', 'attr': 'nivel_escudo', 'custo': {'Gosma': 2, 'Musgo': 1, 'Olho de Goblin': 1}, 'max': 3, 'icone': '[ESC]', 'desc': 'Ganha 1 carga de escudo por fase'},
+    {'nome': 'Pocao de Cura', 'attr': 'curar_hp', 'custo': {'Gosma': 1, 'Esporos': 1}, 'max': 1, 'icone': '[HP+]', 'desc': 'Recupera 60 de HP na hora', 'consumivel': True},
 ]
-
 class TelaLoja:
     COR_FUNDO   = (15, 15, 30, 210)
     COR_TITULO  = (255, 200, 50)
@@ -37,7 +34,7 @@ class TelaLoja:
         self._fonte_desc   = pygame.font.SysFont("monospace", 14)
         self._fonte_custo  = pygame.font.SysFont("monospace", 14)
         
-        # Guarda o retângulo do botão de sair para clique do mouse
+        # Guarda o retÃ¢ngulo do botÃ£o de sair para clique do mouse
         self.btn_sair_rect = None
 
     def abrir(self, tipo):
@@ -68,7 +65,7 @@ class TelaLoja:
         if not self.visivel: return
         upgrades = self._upgrades()
         
-        # Detecção por teclado
+        # DetecÃ§Ã£o por teclado
         if event.type == pygame.KEYDOWN:
             if event.key in (pygame.K_ESCAPE, pygame.K_e): 
                 self.fechar()
@@ -76,7 +73,6 @@ class TelaLoja:
             elif event.key == pygame.K_DOWN: self.sel = (self.sel + 1) % len(upgrades)
             elif event.key in (pygame.K_RETURN, pygame.K_SPACE): self._comprar(upgrades[self.sel], inventario, player)
             
-        # CORREÇÃO: Detecção por clique do mouse no botão Sair
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.btn_sair_rect and self.btn_sair_rect.collidepoint(event.pos):
                 self.fechar()
@@ -112,9 +108,10 @@ class TelaLoja:
         print(f"[LOJA] Comprou: {upgrade['nome']}")
 
     def draw(self, inventario, player):
-        if not self.visivel: return
+        if not self.visivel:
+            return
         upgrades = self._upgrades()
-        nome_loja = "Ferreiro" if self.tipo == "ferreiro" else "Ambulante Mistico"
+        nome_loja = 'Ferreiro' if self.tipo == 'ferreiro' else 'Ambulante Mistico'
 
         overlay = pygame.Surface((self.W, self.H), pygame.SRCALPHA)
         overlay.fill(self.COR_FUNDO)
@@ -125,18 +122,17 @@ class TelaLoja:
         pygame.draw.rect(self.tela, (20, 20, 45), (px, py, pw, ph), border_radius=10)
         pygame.draw.rect(self.tela, (80, 80, 160), (px, py, pw, ph), 2, border_radius=10)
 
-        titulo = self._fonte_titulo.render(f"[ {nome_loja} ]", True, self.COR_TITULO)
+        titulo = self._fonte_titulo.render(f'[ {nome_loja} ]', True, self.COR_TITULO)
         self.tela.blit(titulo, (px + pw // 2 - titulo.get_width() // 2, py + 16))
 
-        # CORREÇÃO: Desenha botão visual de Sair ("X") para clique do mouse
         self.btn_sair_rect = pygame.Rect(px + pw - 110, py + 16, 90, 30)
         pygame.draw.rect(self.tela, (150, 40, 40), self.btn_sair_rect, border_radius=5)
-        txt_sair = self._fonte_desc.render("❌ SAIR", True, (255, 255, 255))
-        self.tela.blit(txt_sair, (self.btn_sair_rect.x + 15, self.btn_sair_rect.y + 6))
+        txt_sair = self._fonte_desc.render('[X] SAIR', True, (255, 255, 255))
+        self.tela.blit(txt_sair, (self.btn_sair_rect.x + 12, self.btn_sair_rect.y + 6))
 
         for i, upg in enumerate(upgrades):
             iy = py + 90 + i * 88
-            selecionado = (i == self.sel)
+            selecionado = i == self.sel
             pode, status = self._pode_comprar(upg, inventario, player)
             nivel = self._nivel_atual(upg, player)
 
@@ -146,18 +142,18 @@ class TelaLoja:
             nome_txt = self._fonte_item.render(f"{upg['icone']}  {upg['nome']}", True, (220, 220, 255))
             self.tela.blit(nome_txt, (px + 22, iy + 8))
 
-            if upg.get("consumivel"):
-                # consumivel nao tem "nivel", entao so mostra a descricao (maior, sem os quadradinhos)
-                self.tela.blit(self._fonte_desc.render(upg["desc"], True, (160, 220, 160)), (px + 22, iy + 40))
+            if upg.get('consumivel'):
+                descricao = self._fonte_desc.render(upg['desc'], True, (160, 220, 160))
+                self.tela.blit(descricao, (px + 22, iy + 40))
             else:
-                nivel_str = f"Nível: {'■' * nivel}{'□' * (upg['max'] - nivel)}"
+                barra = '#' * nivel + '-' * (upg['max'] - nivel)
+                nivel_str = f"NIVEL: [{barra}] {nivel}/{upg['max']}"
                 self.tela.blit(self._fonte_desc.render(nivel_str, True, (160, 200, 160)), (px + 22, iy + 32))
-                self.tela.blit(self._fonte_desc.render(upg["desc"], True, (160, 160, 200)), (px + 22, iy + 50))
+                self.tela.blit(self._fonte_desc.render(upg['desc'], True, (160, 160, 200)), (px + 22, iy + 50))
 
-            custo_parts = [f"{item}:{inventario.itens.get(item,0)}/{qtd}" for item, qtd in upg["custo"].items()]
-            cheio = upg.get("consumivel") and player.hp >= player.hp_max
-            cor_custo = self.COR_OK if pode else (self.COR_MAX if (nivel >= upg["max"] or cheio) else self.COR_CARO)
-            
-            custo_txt = self._fonte_custo.render("  ".join(custo_parts), True, cor_custo)
+            custo_parts = [f"{item}:{inventario.itens.get(item, 0)}/{qtd}" for item, qtd in upg['custo'].items()]
+            cheio = upg.get('consumivel') and player.hp >= player.hp_max
+            cor_custo = self.COR_OK if pode else (self.COR_MAX if (nivel >= upg['max'] or cheio) else self.COR_CARO)
+            custo_txt = self._fonte_custo.render('  '.join(custo_parts), True, cor_custo)
             self.tela.blit(custo_txt, (px + pw - custo_txt.get_width() - 20, iy + 10))
-            self.tela.blit(self._fonte_custo.render(f"[ {status} ]", True, cor_custo), (px + pw - 120, iy + 32))
+            self.tela.blit(self._fonte_custo.render(f'[ {status} ]', True, cor_custo), (px + pw - 120, iy + 32))
