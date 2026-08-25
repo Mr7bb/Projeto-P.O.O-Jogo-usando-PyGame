@@ -3,7 +3,7 @@ import random
 import sys
 import os
  
-from config import TELA_SIZE
+from config import TELA_SIZE, FASE_INICIAL
 from Mapas.gerador_mapas import GeradorProcedural
 from entidades.Player import Player
 from entidades.Fantasma import Fantasma, LegiaoDeFantasmas
@@ -41,6 +41,32 @@ _BIOMA1_ARQUIVOS = {
 }
 _BIOMA1_SPRITES = None
 
+_BIOMA2_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'sprites', 'Biomas', 'bioma2_sprites')
+_BIOMA2_ARQUIVOS = {
+    'chao': ['tile_0a.png', 'tile_0a.png'],
+    'parede': ['tile_1_mud_back.png', 'tile_1_mud_front.png', 'tile_1_mud_left.png', 'tile_1_mud_right.png'],
+    'pedra': [f'tile_2_{numero}.png' for numero in range(1, 5)],
+    'minerio': ['tile_4_minerio.png'],
+    'saida_fechada': ['tile_3_fechada.png'],
+    'saida_aberta': ['tile_3_aberta.png'],
+    'agua': ['tile_1_mud_back.png'],
+}
+_BIOMA2_SPRITES = None
+
+_BIOMA3_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'sprites', 'Biomas', 'bioma3_sprites')
+_BIOMA3_ARQUIVOS = {
+    'chao': ['tile_0b.png', 'tile_0d.png'],
+    'chao_cogumelo': ['tile_0a.png', 'tile_0c.png'],
+    'parede': ['tile_1_back_1.png', 'tile_1_back_2.png', 'tile_1_front_1.png', 'tile_1_front_2.png'],
+    'pedra': [f'tile_2_{numero}.png' for numero in range(1, 5)],
+    'minerio': [f'tile_4_{numero}.png' for numero in range(1, 5)],
+    'saida_fechada': ['tile_3_fechada_1.png', 'tile_3_fechada_2.png'],
+    'saida_aberta': ['tile_3_aberta.png'],
+    # A agua usa as paredes, como solicitado, para continuar bloqueando o caminho.
+    'agua': ['tile_1_back_1.png'],
+}
+_BIOMA3_SPRITES = None
+
 
 def _carregar_sprites_bioma1():
     global _BIOMA1_SPRITES
@@ -54,11 +80,11 @@ def _carregar_sprites_bioma1():
 
         tile = pygame.Surface((TELA_SIZE, TELA_SIZE), pygame.SRCALPHA)
         cor = BIOMAS[1][{'chao': 'chao', 'parede': 'parede', 'pedra': 'pedra', 'minerio': 'minerio', 'saida_fechada': 'chao', 'saida_aberta': 'chao', 'agua': 'agua'}[tipo]]
-        pygame.draw.rect(tile, cor, tile.get_rect(), border_radius=4)
+        pygame.draw.rect(tile, cor, tile.get_rect(), border_radius=6)
         tile.blit(imagem, imagem.get_rect(center=tile.get_rect().center))
 
         mascara = pygame.Surface((TELA_SIZE, TELA_SIZE), pygame.SRCALPHA)
-        pygame.draw.rect(mascara, (255, 255, 255, 255), mascara.get_rect(), border_radius=4)
+        pygame.draw.rect(mascara, (255, 255, 255, 255), mascara.get_rect(), border_radius=6)
         tile.blit(mascara, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
         return tile
 
@@ -77,6 +103,105 @@ def _sprite_bioma1(tipo, linha, coluna, animado=False):
     if not sprites:
         return None
     variacao = linha * 31 + coluna * 17
+    if animado:
+        variacao += pygame.time.get_ticks() // 220
+    return sprites[variacao % len(sprites)]
+
+
+def _carregar_sprites_bioma2():
+    global _BIOMA2_SPRITES
+    if _BIOMA2_SPRITES is not None:
+        return _BIOMA2_SPRITES
+
+    def criar_tile(arquivo, tipo):
+        imagem = pygame.image.load(os.path.join(_BIOMA2_DIR, arquivo)).convert_alpha()
+        tamanho = int(TELA_SIZE * 1.35) if tipo in ('pedra', 'minerio') else TELA_SIZE
+        imagem = pygame.transform.smoothscale(imagem, (tamanho, tamanho))
+
+        tile = pygame.Surface((TELA_SIZE, TELA_SIZE), pygame.SRCALPHA)
+        cor = BIOMAS[2][{'chao': 'chao', 'parede': 'parede', 'pedra': 'pedra', 'minerio': 'minerio', 'saida_fechada': 'chao', 'saida_aberta': 'chao', 'agua': 'parede'}[tipo]]
+        pygame.draw.rect(tile, cor, tile.get_rect(), border_radius=6)
+        tile.blit(imagem, imagem.get_rect(center=tile.get_rect().center))
+
+        # Recorta a imagem que ocupa todo o tile para os cantos da parede
+        # acompanharem o arredondamento do fundo.
+        if tipo in ('parede', 'agua'):
+            mascara = pygame.Surface((TELA_SIZE, TELA_SIZE), pygame.SRCALPHA)
+            pygame.draw.rect(mascara, (255, 255, 255, 255), mascara.get_rect(), border_radius=6)
+            tile.blit(mascara, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+        return tile
+
+    try:
+        _BIOMA2_SPRITES = {
+            tipo: [criar_tile(arquivo, tipo) for arquivo in arquivos]
+            for tipo, arquivos in _BIOMA2_ARQUIVOS.items()
+        }
+    except pygame.error as erro:
+        _BIOMA2_SPRITES = {}
+        print(f'[BIOMA 2] nao consegui carregar as sprites: {erro}')
+    return _BIOMA2_SPRITES
+
+
+def _sprite_bioma2(tipo, linha, coluna, animado=False):
+    sprites = _carregar_sprites_bioma2().get(tipo, [])
+    if not sprites:
+        return None
+    variacao = linha * 31 + coluna * 17
+    if animado:
+        variacao += pygame.time.get_ticks() // 220
+    return sprites[variacao % len(sprites)]
+
+
+def _carregar_sprites_bioma3():
+    global _BIOMA3_SPRITES
+    if _BIOMA3_SPRITES is not None:
+        return _BIOMA3_SPRITES
+
+    def criar_tile(arquivo, tipo):
+        imagem = pygame.image.load(os.path.join(_BIOMA3_DIR, arquivo)).convert_alpha()
+        tamanho = int(TELA_SIZE * 1.35) if tipo in ('pedra', 'minerio') else TELA_SIZE
+        imagem = pygame.transform.smoothscale(imagem, (tamanho, tamanho))
+
+        tile = pygame.Surface((TELA_SIZE, TELA_SIZE), pygame.SRCALPHA)
+        cor = BIOMAS[3][{'chao': 'chao', 'chao_cogumelo': 'chao', 'parede': 'parede', 'pedra': 'pedra', 'minerio': 'minerio', 'saida_fechada': 'chao', 'saida_aberta': 'chao', 'agua': 'parede'}[tipo]]
+        pygame.draw.rect(tile, cor, tile.get_rect(), border_radius=6)
+
+        # Os cogumelos sao decoracao: primeiro preenchemos o tile inteiro com
+        # o chao-base e depois desenhamos a variacao por cima.
+        if tipo == 'chao_cogumelo':
+            base = pygame.image.load(os.path.join(_BIOMA3_DIR, 'tile_0b.png')).convert_alpha()
+            base = pygame.transform.smoothscale(base, (TELA_SIZE, TELA_SIZE))
+            tile.blit(base, (0, 0))
+        tile.blit(imagem, imagem.get_rect(center=tile.get_rect().center))
+
+        if tipo in ('parede', 'agua'):
+            mascara = pygame.Surface((TELA_SIZE, TELA_SIZE), pygame.SRCALPHA)
+            pygame.draw.rect(mascara, (255, 255, 255, 255), mascara.get_rect(), border_radius=6)
+            tile.blit(mascara, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+        return tile
+
+    try:
+        _BIOMA3_SPRITES = {
+            tipo: [criar_tile(arquivo, tipo) for arquivo in arquivos]
+            for tipo, arquivos in _BIOMA3_ARQUIVOS.items()
+        }
+    except pygame.error as erro:
+        _BIOMA3_SPRITES = {}
+        print(f'[BIOMA 3] nao consegui carregar as sprites: {erro}')
+    return _BIOMA3_SPRITES
+
+
+def _sprite_bioma3(tipo, linha, coluna, animado=False):
+    # Uma mistura deterministica elimina as faixas diagonais que surgiam ao
+    # usar apenas uma soma linear de linha e coluna.
+    variacao = (linha * 374761393 + coluna * 668265263) & 0xFFFFFFFF
+    variacao = (variacao ^ (variacao >> 13)) * 1274126177 & 0xFFFFFFFF
+
+    # Cogumelos aparecem em tiles proprios e de forma esparsa pelo chao.
+    tipo_sprite = 'chao_cogumelo' if tipo == 'chao' and variacao % 100 < 15 else tipo
+    sprites = _carregar_sprites_bioma3().get(tipo_sprite, [])
+    if not sprites:
+        return None
     if animado:
         variacao += pygame.time.get_ticks() // 220
     return sprites[variacao % len(sprites)]
@@ -203,7 +328,7 @@ class BlastMiner:
             sys.exit()
  
     def _resetar_jogo(self):
-        self.player, self.inventario, self.fase_atual, self.rodando = Player(), Inventario(), 1, True
+        self.player, self.inventario, self.fase_atual, self.rodando = Player(), Inventario(), FASE_INICIAL, True
         self._carregar_fase(primeiro_spawn=True)
  
     def _carregar_fase(self, primeiro_spawn=False):
@@ -347,12 +472,6 @@ class BlastMiner:
                     if dividiu:
                         for _ in range(2):
                             mini = Slime(inimigo.rect.x, inimigo.rect.y, mini=True)
-                            # BUG CORRIGIDO: a picareta fica ativa por alguns frames (PICARETA_DURACAO),
-                            # entao sem isso os minis nasciam ja "visiveis" pra mesma espadada que
-                            # acabou de dividir o slime grande, e no frame seguinte tomavam dano
-                            # de novo e morriam na hora ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â parecia que 1 hit matava os 3 de uma vez.
-                            # marcando como True aqui, eles ficam imunes ATE essa espadada acabar,
-                            # e so voltam a poder tomar dano na proxima picaretada de verdade.
                             mini._atingindo_esse_swing = True
                             novos_slimes.append(mini)
                 else: inimigo.receber_dano_picareta(dano, self.player.rect)
@@ -420,7 +539,13 @@ class BlastMiner:
         self.saida_rect = None
         bioma = _bioma(self.fase_atual)
         cores = BIOMAS[bioma]
-        usar_sprites = bioma == 1 and bool(_carregar_sprites_bioma1())
+        carregadores_sprites = {
+            1: (_carregar_sprites_bioma1, _sprite_bioma1),
+            2: (_carregar_sprites_bioma2, _sprite_bioma2),
+            3: (_carregar_sprites_bioma3, _sprite_bioma3),
+        }
+        carregar_sprites, obter_sprite = carregadores_sprites.get(bioma, (None, None))
+        usar_sprites = carregar_sprites is not None and bool(carregar_sprites())
         if usar_sprites:
             self.tela.fill(cores['chao'])
 
@@ -444,7 +569,7 @@ class BlastMiner:
                     }.get(tile)
                     if tile == 3:
                         tipo = 'saida_aberta' if self.saida_aberta else 'saida_fechada'
-                    sprite = _sprite_bioma1(tipo, lin_idx, col_idx, animado=(tile == 5)) if tipo else None
+                    sprite = obter_sprite(tipo, lin_idx, col_idx, animado=(tile == 5)) if tipo else None
                     if sprite:
                         self.tela.blit(sprite, rect)
                         continue
