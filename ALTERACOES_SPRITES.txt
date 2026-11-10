@@ -1,0 +1,43 @@
+BLAST MINER CO. — INTEGRAÇÃO DE SPRITES
+
+RESUMO
+Foram integrados 218 PNGs recortados das folhas fornecidas. Os quadros foram separados individualmente, com fundo convertido em transparência e preservação dos contornos e detalhes dos desenhos.
+
+O NOVO SISTEMA
+- entidades/animacoes.py carrega imagens e sequências de quadros uma única vez e mantém cache.
+- O desenho é alinhado pela base da entidade, sem alterar a hitbox usada em colisões.
+- As imagens são carregadas de assets/sprites/integrados/.
+- Se a imagem não existir ou falhar ao carregar, o desenho anterior da entidade continua disponível como alternativa.
+
+INTEGRAÇÕES
+- Goblin: parado, caminhada, ataque com lança e dano.
+- Slime: parado, caminhada e dano; versões pequenas aparecem em escala menor.
+- Fantasma: repouso, flutuação, alerta e dano.
+- Cogumelo agressivo: repouso, caminhada, investida e dano.
+- Cogumelo de esporos: estado escondido, alerta e disparo.
+- Golem de musgo e Golem de lava: repouso, caminhada e dano.
+- Mykros: arte do cogumelo agressivo ampliada.
+- Guardião: arte do golem de cristal ampliada.
+- NPCs Ferreiro e Ambulante Místico: animação de respiração.
+- Itens de inventário: ícones dedicados para os recursos.
+- Bombas: imagem plantada, aviso piscando e efeito animado de explosão.
+- Lança do goblin: sprite rotacionado conforme a direção do projétil.
+
+ESCOLHAS DE DESIGN
+- Os sprites atuais do jogador foram preservados: já possuem animações direcionais de movimento, ataque e dano.
+- A folha de picaretas não foi integrada porque contém poses isoladas e uma imagem estática do mineiro; substituir o jogador atual por ela reduziria as animações disponíveis.
+- As animações de morte foram extraídas nos casos em que estavam disponíveis, mas não são reproduzidas nesta versão. Hoje o jogo remove inimigos imediatamente quando a vida chega a zero; criar uma animação de morte exige mudar esse fluxo para adiar a remoção.
+- A hitbox e as regras de combate não foram alteradas para acomodar as artes.
+
+VERIFICAÇÕES
+- Compilação de sintaxe Python: aprovada com python -m compileall.
+- Arquivos PNG: 218 encontrados; nenhum quadro totalmente transparente após a correção dos recortes.
+- Transparência: os arquivos foram salvos em RGBA.
+- Teste gráfico: não executado neste ambiente porque o Pygame não está instalado. Por isso, o projeto precisa ser aberto no computador do usuário para conferir escala, posicionamento e ritmo das animações em jogo.
+
+AJUSTES APÓS TESTE NO COMPUTADOR DO JOGADOR
+- Golens: 72 quadros (musgo, cristal e lava) foram recortados novamente usando a cor de fundo da folha original como referência. Isso remove também o fundo cinza preso em áreas fechadas, como os espaços sob os braços, sem apagar as pedras ou os efeitos de fumaça.
+- Slime: os oito quadros de repouso e movimento foram recortados novamente. Fragmentos da moldura que ficaram presos ao quarto quadro foram removidos; eles aumentavam artificialmente a altura da imagem e faziam o slime mudar de escala.
+- Pulo do slime: a animação de movimento agora usa uma escala comum para os quatro quadros, preservando a diferença de formato desenhada na spritesheet. Os quadros do meio recebem um pequeno deslocamento para cima, dando o efeito de salto.
+- Ritmo: a duração dos quadros foi aumentada em aproximadamente 35% no sistema de animações, deixando movimentos e efeitos menos acelerados.
+- Colisões: hitboxes, dano, velocidade de movimento e regras dos inimigos não foram alterados.

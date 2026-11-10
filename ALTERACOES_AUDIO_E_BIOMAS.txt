@@ -1,0 +1,19 @@
+BLAST MINER CO. - ALTERACOES DE AUDIO E CENARIO
+
+SONS ADICIONADOS (efeitos originais em WAV):
+- picareta: ao iniciar um ataque corpo a corpo.
+- dano: quando o jogador realmente perde vida.
+- escudo: quando uma carga do escudo absorve um golpe.
+- morte: quando um inimigo e derrotado (nao toca quando um slime apenas se divide).
+- projetil: quando um inimigo dispara um projetil.
+- aviso_ataque: quando um chefe inicia um ataque telegrafado ou o Golem de Lava comeca a preparar o golpe.
+- bomba: ao plantar uma bomba.
+- explosao: quando a bomba detona.
+
+CENARIO:
+- A agua nao troca mais entre os quadros da sprite; fica estatica.
+- O chao do bioma dos cogumelos agora usa a mesma textura de chao do bioma dos goblins/slimes.
+- Os tiles decorativos de cogumelo no chao foram removidos; paredes, minerios, saidas e inimigos do bioma permanecem.
+
+MUSICA:
+- Nenhuma musica foi adicionada, conforme solicitado.

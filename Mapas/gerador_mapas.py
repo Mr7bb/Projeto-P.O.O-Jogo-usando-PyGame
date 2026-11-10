@@ -14,7 +14,6 @@ class GeradorProcedural:
     COLUNAS_BASE = 24
     LINHAS_MAX   = 36
     COLUNAS_MAX  = 52
-    TELA_SIZE    = 50  # tamanho do tile em pixels (para calcular posicao de drops, spawn de inimigos, etc)
 
     def __init__(self):
         self.linhas  = self.LINHAS_BASE
@@ -197,7 +196,7 @@ class GeradorProcedural:
             for dl, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                 nl, nc = l + dl, c + dc
                 if 0 <= nl < linhas and 0 <= nc < colunas:
-                    if not visitados[nl][nc] and mapa[nl][nc] != 1:
+                    if not visitados[nl][nc] and mapa[nl][nc] in (0, 3):
                         visitados[nl][nc] = True
                         fila.append((nl, nc))
         return vagas

@@ -1,5 +1,6 @@
 import pygame
 import os
+from sons import tocar
  
 # carrega as sprites direcionais do player (baseadas na sheet que voce mandou).
 # fica cacheado num dict global porque so existe 1 player no jogo, nao precisa
@@ -14,10 +15,13 @@ _DIR_SPRITES_PLAYER = os.path.join(
 _SPRITES_PLAYER = {}
 _SPRITES_ATAQUE = {}
 _SPRITES_DANO = {}
+_SPRITES_PLAYER_TENTADOS = False
  
 def _carregar_sprites_player():
-    if _SPRITES_PLAYER:
+    global _SPRITES_PLAYER_TENTADOS
+    if _SPRITES_PLAYER_TENTADOS:
         return
+    _SPRITES_PLAYER_TENTADOS = True
 
     def carregar_frames(arquivos):
         return [
@@ -70,7 +74,9 @@ class Player:
  
     def __init__(self):
         self.rect       = pygame.Rect(40, 40, 40, 40)
-        self.velocidade = 4  # velocidade base 5 -> 7 (pedido pra deixar o player mais rapido)
+        self._x_preciso = float(self.rect.x)
+        self._y_preciso = float(self.rect.y)
+        self.velocidade = 4  # velocidade inicial em pixels por frame
         self.hp_max     = self.HP_MAX_BASE
         self.hp         = self.hp_max
  
@@ -92,6 +98,7 @@ class Player:
         self.picareta_ativa       = False
         self.picareta_timer       = 0
         self.picareta_rect        = None
+        self.picareta_direcao     = None
         self.PICARETA_DURACAO     = 12
         self.PICARETA_COOLDOWN    = 10
         # alcance 55 -> 75: pedido pra melhorar o alcance da espada/picareta, que
@@ -99,7 +106,7 @@ class Player:
         self.PICARETA_ALCANCE     = 75
         
         self.BOMBA_COOLDOWN_BASE  = 240
-        self.max_bombas           = 2
+        self.max_bombas           = 1
         
         self.nivel_forca          = 0
         self.nivel_velocidade     = 0
@@ -110,7 +117,6 @@ class Player:
         self.nivel_escudo         = 0
         
         self.imune_veneno         = False
-        self.imune_atordoamento   = False
         self.escudo_cargas        = 0
  
     @property
@@ -140,39 +146,53 @@ class Player:
             tela.blit(sprite, sprite.get_rect(center=(r.centerx, r.centery + deslocamento_y)))
         else:
             pygame.draw.rect(tela, (255, 200, 0), r)
+    def sincronizar_posicao(self):
+        self._x_preciso = float(self.rect.x)
+        self._y_preciso = float(self.rect.y)
+
     def controlar(self, paredes, bombas, mult_velocidade=1.0):
-        # move um eixo por vez (x depois y) e desfaz o movimento se colidir.
-        # fazer separado por eixo evita o bug classico de "grudar" na quina de uma parede
-        # quando anda na diagonal.
-        # mult_velocidade: usado pelo Lodo Corrosivo do boss Gruk (reduz a velocidade
-        # enquanto o player pisa na poca). 1.0 = velocidade normal.
-        pos_antiga_x, pos_antiga_y = self.rect.x, self.rect.y
         teclas = pygame.key.get_pressed()
         vel = self.velocidade * mult_velocidade
+        pos_antiga_x = self._x_preciso
+        pos_antiga_y = self._y_preciso
         self.em_movimento = any(teclas[tecla] for tecla in (pygame.K_a, pygame.K_d, pygame.K_w, pygame.K_s))
- 
+
         if teclas[pygame.K_a]:
-            self.rect.x -= vel
+            self._x_preciso -= vel
             self.direcao_face = 'esquerda'
         if teclas[pygame.K_d]:
-            self.rect.x += vel
+            self._x_preciso += vel
             self.direcao_face = 'direita'
+        self.rect.x = round(self._x_preciso)
         for p in paredes:
-            if self.rect.colliderect(p): self.rect.x = pos_antiga_x
+            if self.rect.colliderect(p):
+                self._x_preciso = pos_antiga_x
+                self.rect.x = round(self._x_preciso)
+                break
         for b in bombas:
-            if b.solida and self.rect.colliderect(b.rect): self.rect.x = pos_antiga_x
- 
+            if b.solida and self.rect.colliderect(b.rect):
+                self._x_preciso = pos_antiga_x
+                self.rect.x = round(self._x_preciso)
+                break
+
         if teclas[pygame.K_w]:
-            self.rect.y -= vel
+            self._y_preciso -= vel
             self.direcao_face = 'cima'
         if teclas[pygame.K_s]:
-            self.rect.y += vel
+            self._y_preciso += vel
             self.direcao_face = 'baixo'
+        self.rect.y = round(self._y_preciso)
         for p in paredes:
-            if self.rect.colliderect(p): self.rect.y = pos_antiga_y
+            if self.rect.colliderect(p):
+                self._y_preciso = pos_antiga_y
+                self.rect.y = round(self._y_preciso)
+                break
         for b in bombas:
-            if b.solida and self.rect.colliderect(b.rect): self.rect.y = pos_antiga_y
- 
+            if b.solida and self.rect.colliderect(b.rect):
+                self._y_preciso = pos_antiga_y
+                self.rect.y = round(self._y_preciso)
+                break
+
         if self.em_movimento:
             self.sprite_timer += 1
             if self.sprite_timer >= self.SPRITE_INTERVALO:
@@ -182,40 +202,49 @@ class Player:
             self.sprite_frame = 0
             self.sprite_timer = 0
 
-        if self.bomba_cooldown   > 0: self.bomba_cooldown  -= 1
-        if self.picareta_cooldown > 0: self.picareta_cooldown -= 1
- 
+        if self.bomba_cooldown > 0:
+            self.bomba_cooldown -= 1
+        if self.picareta_cooldown > 0:
+            self.picareta_cooldown -= 1
+
         if self.picareta_ativa:
             self.picareta_timer -= 1
             if self.picareta_timer <= 0:
                 self.picareta_ativa = False
-                self.picareta_rect  = None
- 
+                self.picareta_rect = None
+                self.picareta_direcao = None
+
     def pode_atacar_picareta(self): return self.picareta_cooldown == 0 and not self.picareta_ativa
  
     def atacar(self):
-        """Retornado ao formato clÃƒÆ’Ã‚Â¡ssico: Ataca na direÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o em que o jogador estÃƒÆ’Ã‚Â¡ olhando."""
+        """Ataca na direção em que o jogador está olhando."""
         if not self.pode_atacar_picareta(): return None
         self.picareta_ativa    = True
         self.picareta_timer    = self.PICARETA_DURACAO
         self.picareta_cooldown = self.PICARETA_COOLDOWN
-        self.picareta_rect     = self._calcular_hitbox()
+        self.picareta_direcao = self.direcao_face
+        self.picareta_rect = self._calcular_hitbox(self.picareta_direcao)
+        tocar('picareta')
         return self.picareta_rect
  
-    def _calcular_hitbox(self):
+    def _calcular_hitbox(self, direcao=None):
+        direcao = direcao or self.direcao_face
         al, larg = self.PICARETA_ALCANCE, 58  # largura 50 -> 58, acompanha o aumento de alcance
         cx, cy = self.rect.centerx, self.rect.centery
-        if self.direcao_face == 'cima': return pygame.Rect(cx - larg // 2, cy - al - self.rect.height // 2, larg, al)
-        elif self.direcao_face == 'baixo': return pygame.Rect(cx - larg // 2, cy + self.rect.height // 2, larg, al)
-        elif self.direcao_face == 'esquerda': return pygame.Rect(cx - al - self.rect.width // 2, cy - larg // 2, al, larg)
+        if direcao == 'cima': return pygame.Rect(cx - larg // 2, cy - al - self.rect.height // 2, larg, al)
+        elif direcao == 'baixo': return pygame.Rect(cx - larg // 2, cy + self.rect.height // 2, larg, al)
+        elif direcao == 'esquerda': return pygame.Rect(cx - al - self.rect.width // 2, cy - larg // 2, al, larg)
         else: return pygame.Rect(cx + self.rect.width // 2, cy - larg // 2, al, larg)
  
     def hitbox_picareta_atual(self):
-        if self.picareta_ativa and self.picareta_rect: return self._calcular_hitbox()
+        if self.picareta_ativa and self.picareta_rect:
+            self.picareta_rect = self._calcular_hitbox(self.picareta_direcao)
+            return self.picareta_rect.copy()
         return None
  
     def dano_picareta_para(self, inimigo):
-        return self.DANO_PICARETA.get(inimigo.__class__.__name__, self.DANO_PICARETA_PADRAO)
+        dano_base = self.DANO_PICARETA.get(inimigo.__class__.__name__, self.DANO_PICARETA_PADRAO)
+        return dano_base + self.nivel_forca * 2
  
     def desenhar_picareta(self, tela, cam_x=0, cam_y=0):
         if not self.picareta_ativa or not self.picareta_rect: return
@@ -228,10 +257,20 @@ class Player:
         pygame.draw.rect(tela, cor, r, 2)
  
     def receber_dano(self, quantidade=20):
-        if self.invencivel_timer == 0:
-            self.hp = max(0, self.hp - quantidade)
+        if self.invencivel_timer > 0:
+            return
+
+        if self.escudo_cargas > 0:
+            tocar('escudo')
+            self.escudo_cargas -= 1
             self.invencivel_timer = 60
-            print(f"[MIKE] HP: {self.hp}/{self.hp_max}")
+            print(f"[MIKE] Escudo absorveu o golpe. Cargas restantes: {self.escudo_cargas}")
+            return
+
+        self.hp = max(0, self.hp - quantidade)
+        tocar('dano')
+        self.invencivel_timer = 60
+        print(f"[MIKE] HP: {self.hp}/{self.hp_max}")
  
     def curar(self, quantidade=20): 
         self.hp = min(self.hp_max, self.hp + quantidade)
@@ -244,6 +283,7 @@ class Player:
     def plantar_bomba(self): self.bomba_cooldown = self.BOMBA_COOLDOWN_BASE
  
     def aplicar_knockback(self, origem_rect, paredes, bombas):
+        self.sincronizar_posicao()
         dx = 2 if self.rect.centerx - origem_rect.centerx > 0 else -2
         dy = 2 if self.rect.centery - origem_rect.centery > 0 else -2
         for _ in range(40):
@@ -258,3 +298,4 @@ class Player:
             for b in bombas:
                 if b.solida and self.rect.colliderect(b.rect): self.rect.y -= dy; dy = 0; break
             if dx == 0 and dy == 0: break
+        self.sincronizar_posicao()

@@ -1,8 +1,13 @@
 import pygame
+import math
+from entidades.animacoes import carregar_imagem
  
 class Projetil:
     def __init__(self, x, y, alvo_x, alvo_y, velocidade, dano, cor, raio=6, veneno=False):
-        self.rect = pygame.Rect(x, y, raio * 2, raio * 2)
+        self._x_preciso = float(x)
+        self._y_preciso = float(y)
+        self.rect = pygame.Rect(0, 0, raio * 2, raio * 2)
+        self.rect.center = (round(self._x_preciso), round(self._y_preciso))
         self.raio = raio
         self.dano = dano
         self.cor = cor
@@ -15,9 +20,13 @@ class Projetil:
         self.vx = dx / dist * velocidade
         self.vy = dy / dist * velocidade
  
+    def _mover(self):
+        self._x_preciso += self.vx
+        self._y_preciso += self.vy
+        self.rect.center = (round(self._x_preciso), round(self._y_preciso))
+
     def atualizar(self, player, paredes):
-        self.rect.x += self.vx
-        self.rect.y += self.vy
+        self._mover()
  
         if self.rect.colliderect(player.rect):
             player.receber_dano(self.dano)
@@ -67,8 +76,7 @@ class PicaretaFantasma(Projetil):
  
     def atualizar(self, player, paredes):
         # igual ao Projetil normal, so que sem checar colisao com paredes
-        self.rect.x += self.vx
-        self.rect.y += self.vy
+        self._mover()
  
         if self.rect.colliderect(player.rect):
             player.receber_dano(self.dano)
@@ -92,10 +100,21 @@ class Lanca(Projetil):
     def __init__(self, x, y, alvo_x, alvo_y):
         super().__init__(x, y, alvo_x, alvo_y,
                          velocidade=5, dano=15, cor=self.COR, raio=5, veneno=False)
+        self._sprite_lanca = None
  
     def desenhar(self, tela, cam_x=0, cam_y=0):
         cx = int(self.rect.centerx - cam_x)
         cy = int(self.rect.centery - cam_y)
+
+        if self._sprite_lanca is None:
+            self._sprite_lanca = carregar_imagem("projetil/lanca.png", altura=27)
+
+        if self._sprite_lanca is not None:
+            angulo = -math.degrees(math.atan2(self.vy, self.vx))
+            sprite = pygame.transform.rotate(self._sprite_lanca, angulo)
+            tela.blit(sprite, sprite.get_rect(center=(cx, cy)))
+            return
+
         mag = max((self.vx**2 + self.vy**2) ** 0.5, 1)
         nx, ny = self.vx / mag, self.vy / mag
         x1 = int(cx - nx * 10)

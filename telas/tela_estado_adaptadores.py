@@ -54,3 +54,22 @@ class EstadoLojaAdaptador(EstadoGame):
     def desenhar(self, tela):
         self.gerenciador.game._desenhar_jogo()
         self.gerenciador.game.tela_loja.draw(self.gerenciador.game.inventario, self.gerenciador.game.player)
+
+
+class EstadoVitoriaAdaptador(EstadoGame):
+    def iniciar(self):
+        self.tempo = 0
+
+    def handle_event(self, event):
+        if event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_ESCAPE):
+            self.gerenciador.mudar_estado("menu")
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            self.gerenciador.mudar_estado("menu")
+
+    def atualizar(self):
+        self.tempo += 1
+        if self.tempo >= 300:
+            self.gerenciador.mudar_estado("menu")
+
+    def desenhar(self, tela):
+        self.gerenciador.game.tela_vitoria.draw()

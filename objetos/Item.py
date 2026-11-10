@@ -1,6 +1,8 @@
 import pygame
+import os
 import random
 import math  # estava sendo importado dentro do desenhar() toda vez, movi pra ca (so precisa 1 vez)
+from entidades.animacoes import carregar_imagem
 
 # cores e símbolos por tipo de item
 ITENS = {
@@ -32,6 +34,21 @@ class Item:
     # no chao ao mesmo tempo). agora e uma fonte so, compartilhada por todos os itens,
     # criada apenas na primeira vez que algum item precisa desenhar.
     _fonte = None
+    _sprites = {}
+    _nomes_sprites = {
+        "Plasma": "Plasma.png",
+        "Essencia Fantasmal": "Essencia_Fantasmal.png",
+        "Esporos": "Esporos.png",
+        "Nucleo de Esporos": "Nucleo_de_Esporos.png",
+        "Chapeu de Cogumelo": "Chapeu_de_Cogumelo.png",
+        "Gosma": "Gosma.png",
+        "Musgo": "Musgo.png",
+        "Olho de Goblin": "Olho_de_Goblin.png",
+        "Minerio Comum": "Minerio_Comum.png",
+        "Minerio Raro": "Minerio_Raro.png",
+        "Cristais": "Cristais.png",
+        "Madeira": "Madeira.png",
+    }
 
     def __init__(self, x, y, tipo):
         self.tipo  = tipo
@@ -39,7 +56,12 @@ class Item:
         # posição com pequeno offset aleatório pra não empilhar tudo
         ox = random.randint(-15, 15)
         oy = random.randint(-15, 15)
-        self.rect = pygame.Rect(x + ox, y + oy, self.TAMANHO, self.TAMANHO)
+        self.rect = pygame.Rect(
+            x + ox - self.TAMANHO // 2,
+            y + oy - self.TAMANHO // 2,
+            self.TAMANHO,
+            self.TAMANHO,
+        )
         self._bob_timer = random.randint(0, 60)  # animação de bobbing
 
     def atualizar(self, player):
@@ -59,14 +81,24 @@ class Item:
         info = ITENS.get(self.tipo, {"cor": (200, 200, 200), "simbolo": "?"})
         cor  = info["cor"]
 
-        # fundo circular
         cx = rx + self.TAMANHO // 2
         cy = ry + self.TAMANHO // 2
+        nome_sprite = Item._nomes_sprites.get(self.tipo)
+        if nome_sprite:
+            chave = self.tipo
+            if chave not in Item._sprites:
+                Item._sprites[chave] = carregar_imagem(
+                    os.path.join("itens", nome_sprite), altura=27
+                )
+            sprite = Item._sprites[chave]
+            if sprite:
+                tela.blit(sprite, sprite.get_rect(center=(cx, cy)))
+                return
+
+        # Plano de segurança caso um arquivo de imagem não esteja disponível.
         pygame.draw.circle(tela, cor, (cx, cy), self.TAMANHO // 2)
         brilho = tuple(min(v + 60, 255) for v in cor)
         pygame.draw.circle(tela, brilho, (cx - 2, cy - 2), self.TAMANHO // 4)
-
-        # letra identificadora (fonte cacheada, ver comentario la em cima da classe)
         if Item._fonte is None:
             Item._fonte = pygame.font.SysFont("monospace", 11, bold=True)
         txt = Item._fonte.render(info["simbolo"], True, (20, 20, 20))

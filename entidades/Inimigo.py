@@ -10,6 +10,8 @@ class Inimigo:
  
     def __init__(self, x, y, largura, altura, velocidade, vida, cor):
         self.rect = pygame.Rect(x, y, largura, altura)
+        self._x_preciso = float(self.rect.x)
+        self._y_preciso = float(self.rect.y)
         self.velocidade = velocidade
         self.vida = vida
         self.cor = cor
@@ -29,6 +31,29 @@ class Inimigo:
         self.direcao_patrulha = random.choice(['cima', 'baixo', 'esquerda', 'direita'])
         self.passos_patrulha = 0
  
+    def salvar_posicao(self):
+        return self._x_preciso, self._y_preciso
+
+    def mover_x(self, deslocamento):
+        self._x_preciso += deslocamento
+        self.rect.x = round(self._x_preciso)
+
+    def mover_y(self, deslocamento):
+        self._y_preciso += deslocamento
+        self.rect.y = round(self._y_preciso)
+
+    def restaurar_x(self, x):
+        self._x_preciso = float(x)
+        self.rect.x = round(self._x_preciso)
+
+    def restaurar_y(self, y):
+        self._y_preciso = float(y)
+        self.rect.y = round(self._y_preciso)
+
+    def restaurar_posicao(self, x, y):
+        self.restaurar_x(x)
+        self.restaurar_y(y)
+
     def receber_dano_explosao(self, dano=2):
         # dano causado pela bomba. antes toda explosao tirava so 1 "hp" do mob, o que
         # deixava a bomba fraca de mais (pedido do Marquito pra melhorar isso um pouco,
@@ -44,10 +69,9 @@ class Inimigo:
         self.vida -= dano
         print(f"[{self.__class__.__name__}] Atingido pela picareta! Vida: {self.vida}")
  
-        # Correção do sistema da Legião: Se for uma LegiaoDeFantasmas, ativa a fúria geral ao tomar dano físico
-        if self.__class__.__name__ == "LegiaoDeFantasmas":
-            # Chama o método de fúria compartilhada contido na própria subclasse
-            self.alertar_toda_legiao()
+        alertar_legiao = getattr(self, "alertar_toda_legiao", None)
+        if callable(alertar_legiao):
+            alertar_legiao()
  
         # calcula a direcao do empurrao: sentido contrario de onde o player esta
         dx = self.rect.centerx - player_rect.centerx
@@ -63,53 +87,58 @@ class Inimigo:
             print(f"[{self.__class__.__name__}] Eliminado pela picareta!")
  
     def _aplicar_knockback_proprio(self, paredes):
-        # empurra o mob pixel a pixel na direcao calculada em receber_dano_picareta,
-        # cancelando o movimento se bater numa parede no meio do caminho.
-        # retorna True enquanto o empurrao ainda ta rolando (quem chamar deve parar de
-        # processar movimento normal nesse frame).
-        if self.kb_timer <= 0: return False
+        if self.kb_timer <= 0:
+            return False
+
         self.kb_timer -= 1
-        pos_x, pos_y = self.rect.x, self.rect.y
- 
-        self.rect.x += int(self.kb_dx)
-        for p in paredes:
-            if self.rect.colliderect(p):
-                self.rect.x = pos_x
-                self.kb_dx  = 0
+        pos_x, pos_y = self.salvar_posicao()
+
+        self.mover_x(int(self.kb_dx))
+        for parede in paredes:
+            if self.rect.colliderect(parede):
+                self.restaurar_x(pos_x)
+                self.kb_dx = 0
                 break
- 
-        self.rect.y += int(self.kb_dy)
-        for p in paredes:
-            if self.rect.colliderect(p):
-                self.rect.y = pos_y
-                self.kb_dy  = 0
+
+        self.mover_y(int(self.kb_dy))
+        for parede in paredes:
+            if self.rect.colliderect(parede):
+                self.restaurar_y(pos_y)
+                self.kb_dy = 0
                 break
+
         return True
- 
+
     def _patrulhar_aleatorio(self, paredes, passos_max=80):
-        """
-        movimento de patrulha generico: anda numa direcao aleatoria, e se bater numa parede
-        ou andar passos_max passos sem bater em nada, escolhe uma direcao nova.
-        golem, cogumelo agressivo e slime usavam essa mesma logica copiada e colada em cada
-        arquivo, entao movi pra ca (classe mae) pra eles so chamarem esse metodo.
-        """
-        pos_antiga_x, pos_antiga_y = self.rect.x, self.rect.y
- 
-        if self.direcao_patrulha == 'cima':       self.rect.y -= self.velocidade
-        elif self.direcao_patrulha == 'baixo':    self.rect.y += self.velocidade
-        elif self.direcao_patrulha == 'esquerda': self.rect.x -= self.velocidade
-        elif self.direcao_patrulha == 'direita':  self.rect.x += self.velocidade
- 
-        for p in paredes:
-            if self.rect.colliderect(p):
-                self.rect.x, self.rect.y = pos_antiga_x, pos_antiga_y
+        pos_antiga_x, pos_antiga_y = self.salvar_posicao()
+
+        if self.direcao_patrulha == 'cima':
+            self.mover_y(-self.velocidade)
+        elif self.direcao_patrulha == 'baixo':
+            self.mover_y(self.velocidade)
+        elif self.direcao_patrulha == 'esquerda':
+            self.mover_x(-self.velocidade)
+        elif self.direcao_patrulha == 'direita':
+            self.mover_x(self.velocidade)
+
+        for parede in paredes:
+            if self.rect.colliderect(parede):
+                self.restaurar_posicao(pos_antiga_x, pos_antiga_y)
                 self.direcao_patrulha = random.choice(['cima', 'baixo', 'esquerda', 'direita'])
                 break
- 
+
         self.passos_patrulha += 1
         if self.passos_patrulha > passos_max:
             self.direcao_patrulha = random.choice(['cima', 'baixo', 'esquerda', 'direita'])
             self.passos_patrulha = 0
- 
-    def desenhar(self, tela):
-        pygame.draw.rect(tela, self.cor, self.rect)
+
+    def rect_na_tela(self, cam_x=0, cam_y=0):
+        return pygame.Rect(
+            self.rect.x - cam_x,
+            self.rect.y - cam_y,
+            self.rect.width,
+            self.rect.height,
+        )
+
+    def desenhar(self, tela, cam_x=0, cam_y=0):
+        pygame.draw.rect(tela, self.cor, self.rect_na_tela(cam_x, cam_y))

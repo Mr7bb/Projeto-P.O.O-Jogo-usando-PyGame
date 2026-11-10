@@ -3,7 +3,7 @@ import random
 import sys
 import os
  
-from config import TELA_SIZE, FASE_INICIAL
+from config import TELA_SIZE, FASE_INICIAL, FASE_FINAL
 from Mapas.gerador_mapas import GeradorProcedural
 from entidades.Player import Player
 from entidades.Fantasma import Fantasma, LegiaoDeFantasmas
@@ -19,15 +19,17 @@ from objetos.Projetil import Esporo, Lanca, PicaretaFantasma
 from objetos.Inventario import Inventario
 from objetos.Drops import gerar_drops_mob
 from objetos.Item import ITENS
+from sons import iniciar_sons, tocar
  
 from telas.tela_inicial import TelaInicial
 from telas.tela_jogo import TelaPause
 from telas.tela_gameover import TelaGameOver
 from telas.tela_loja import TelaLoja
+from telas.tela_vitoria import TelaVitoria
  
 from telas.tela_estado_game import TransicaoFade
 from telas.telas_estado_jogo import EstadoJogando
-from telas.tela_estado_adaptadores import EstadoMenuAdaptador, EstadoPauseAdaptador, EstadoGameOverAdaptador, EstadoLojaAdaptador
+from telas.tela_estado_adaptadores import EstadoMenuAdaptador, EstadoPauseAdaptador, EstadoGameOverAdaptador, EstadoLojaAdaptador, EstadoVitoriaAdaptador
  
 _BIOMA1_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'sprites', 'Biomas', 'bioma1_sprites')
 _BIOMA1_ARQUIVOS = {
@@ -55,8 +57,7 @@ _BIOMA2_SPRITES = None
 
 _BIOMA3_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'sprites', 'Biomas', 'bioma3_sprites')
 _BIOMA3_ARQUIVOS = {
-    'chao': ['tile_0b.png', 'tile_0d.png'],
-    'chao_cogumelo': ['tile_0a.png', 'tile_0c.png'],
+    'chao': ['tile_0a.png'],
     'parede': ['tile_1_back_1.png', 'tile_1_back_2.png', 'tile_1_front_1.png', 'tile_1_front_2.png'],
     'pedra': [f'tile_2_{numero}.png' for numero in range(1, 5)],
     'minerio': [f'tile_4_{numero}.png' for numero in range(1, 5)],
@@ -158,20 +159,16 @@ def _carregar_sprites_bioma3():
         return _BIOMA3_SPRITES
 
     def criar_tile(arquivo, tipo):
-        imagem = pygame.image.load(os.path.join(_BIOMA3_DIR, arquivo)).convert_alpha()
+        diretorio = _BIOMA2_DIR if tipo == 'chao' else _BIOMA3_DIR
+        nome_arquivo = 'tile_0a.png' if tipo == 'chao' else arquivo
+        imagem = pygame.image.load(os.path.join(diretorio, nome_arquivo)).convert_alpha()
         tamanho = int(TELA_SIZE * 1.35) if tipo in ('pedra', 'minerio') else TELA_SIZE
         imagem = pygame.transform.smoothscale(imagem, (tamanho, tamanho))
 
         tile = pygame.Surface((TELA_SIZE, TELA_SIZE), pygame.SRCALPHA)
-        cor = BIOMAS[3][{'chao': 'chao', 'chao_cogumelo': 'chao', 'parede': 'parede', 'pedra': 'pedra', 'minerio': 'minerio', 'saida_fechada': 'chao', 'saida_aberta': 'chao', 'agua': 'parede'}[tipo]]
+        cor = BIOMAS[3][{'chao': 'chao', 'parede': 'parede', 'pedra': 'pedra', 'minerio': 'minerio', 'saida_fechada': 'chao', 'saida_aberta': 'chao', 'agua': 'parede'}[tipo]]
         pygame.draw.rect(tile, cor, tile.get_rect(), border_radius=6)
 
-        # Os cogumelos sao decoracao: primeiro preenchemos o tile inteiro com
-        # o chao-base e depois desenhamos a variacao por cima.
-        if tipo == 'chao_cogumelo':
-            base = pygame.image.load(os.path.join(_BIOMA3_DIR, 'tile_0b.png')).convert_alpha()
-            base = pygame.transform.smoothscale(base, (TELA_SIZE, TELA_SIZE))
-            tile.blit(base, (0, 0))
         tile.blit(imagem, imagem.get_rect(center=tile.get_rect().center))
 
         if tipo in ('parede', 'agua'):
@@ -197,9 +194,7 @@ def _sprite_bioma3(tipo, linha, coluna, animado=False):
     variacao = (linha * 374761393 + coluna * 668265263) & 0xFFFFFFFF
     variacao = (variacao ^ (variacao >> 13)) * 1274126177 & 0xFFFFFFFF
 
-    # Cogumelos aparecem em tiles proprios e de forma esparsa pelo chao.
-    tipo_sprite = 'chao_cogumelo' if tipo == 'chao' and variacao % 100 < 15 else tipo
-    sprites = _carregar_sprites_bioma3().get(tipo_sprite, [])
+    sprites = _carregar_sprites_bioma3().get(tipo, [])
     if not sprites:
         return None
     if animado:
@@ -232,7 +227,7 @@ def _ultima_fase_do_bioma(fase_num):
  
 def _tabela_spawns(fase_num):
     if fase_num == 1:   return [(Fantasma, 2, 3)]
-    elif fase_num == 2: return [(Fantasma, 4, 6)]
+    elif fase_num == 2: return [(LegiaoDeFantasmas, 4, 6)]
     # fase 3 = ultima fase do bioma 1 = sala do boss "O Eco Perdido" (sozinho,
     # igual o Manual de Design de Bosses descreve: nenhum boss deve ser so mais
     # um mob no meio da fase, ele e o combate inteiro)
@@ -253,7 +248,7 @@ def _tabela_spawns(fase_num):
     # fase 12 = ultima fase do bioma 4 = sala do boss "O Guardiao"
     elif fase_num == 12: return [(Guardiao, 1, 1)]
     # fase 13 = bioma 5 (Nucleo Vulcanico) = chefe final "O Coracao da Mina"
-    elif fase_num == 13: return [(CoracaoDaMina, 1, 1)]
+    elif fase_num == FASE_FINAL: return [(CoracaoDaMina, 1, 1)]
     else:               return [(Golem, 3, 4), (GolemLava, 2, 3), (Fantasma, 3, 4), (Goblin, 2, 3), (Slime, 2, 3)] 
  
 class GerenciadorEstados:
@@ -281,6 +276,7 @@ class GerenciadorEstados:
 class BlastMiner:
     def __init__(self):
         pygame.init()
+        iniciar_sons()
         self.tela   = pygame.display.set_mode((LARGURA, ALTURA))
         pygame.display.set_caption("Blast Miner Co.")
         self.clock  = pygame.time.Clock()
@@ -290,12 +286,19 @@ class BlastMiner:
         self.tela_pause    = TelaPause(self.tela)
         self.tela_gameover = TelaGameOver(self.tela)
         self.tela_loja     = TelaLoja(self.tela)
+        self.tela_vitoria  = TelaVitoria(self.tela)
  
         self.fsm = GerenciadorEstados(self)
         self._configurar_estados()
  
         self.player, self.inventario, self.mapa = None, None, None
-        self.inimigos = self.paredes = self.bombas = self.projeteis = self.itens_chao = self.npcs = []
+        self.inimigos = []
+        self.paredes = []
+        self.paredes_projeteis = []
+        self.bombas = []
+        self.projeteis = []
+        self.itens_chao = []
+        self.npcs = []
         self.saida_rect = None
         self.saida_aberta = False
         self.rodando = True
@@ -303,13 +306,13 @@ class BlastMiner:
         self.tela_cheia = False
  
       
-        self._fonte_hud      = pygame.font.SysFont("monospace", 20, bold=True)
-        self._fonte_hud_p    = pygame.font.SysFont("monospace", 15)
-        self._fonte_status   = pygame.font.SysFont("monospace", 15, bold=True)
-        self._fonte_prompt   = pygame.font.SysFont("monospace", 16, bold=True)
-        self._fonte_cadeado  = pygame.font.SysFont("monospace", 22, bold=True)
-        self._fonte_hotbar_simbolo = pygame.font.SysFont("monospace", 18, bold=True)
-        self._fonte_hotbar_qtd     = pygame.font.SysFont("monospace", 12, bold=True)
+        self._fonte_hud      = pygame.font.SysFont("trebuchet ms", 19, bold=True)
+        self._fonte_hud_p    = pygame.font.SysFont("trebuchet ms", 14)
+        self._fonte_status   = pygame.font.SysFont("trebuchet ms", 13, bold=True)
+        self._fonte_prompt   = pygame.font.SysFont("trebuchet ms", 15, bold=True)
+        self._fonte_cadeado  = pygame.font.SysFont("trebuchet ms", 20, bold=True)
+        self._fonte_hotbar_simbolo = pygame.font.SysFont("trebuchet ms", 17, bold=True)
+        self._fonte_hotbar_qtd     = pygame.font.SysFont("trebuchet ms", 12, bold=True)
  
     def _configurar_estados(self):
         try:
@@ -318,10 +321,11 @@ class BlastMiner:
             self.fsm.registrar("pause", EstadoPauseAdaptador(self.fsm))
             self.fsm.registrar("gameover", EstadoGameOverAdaptador(self.fsm))
             self.fsm.registrar("loja", EstadoLojaAdaptador(self.fsm))
+            self.fsm.registrar("vitoria", EstadoVitoriaAdaptador(self.fsm))
             self.fsm.registrar("dialogo", None)
             self.fsm.mudar_estado_imediato("menu")
         except Exception as e:
-            print(f"\n[ERRO CRÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂTICO NA MAQUINA DE ESTADOS]: {e}")
+            print(f"\n[ERRO CRÍTICO NA MÁQUINA DE ESTADOS]: {e}")
             import traceback
             traceback.print_exc()
             pygame.quit()
@@ -334,53 +338,90 @@ class BlastMiner:
     def _carregar_fase(self, primeiro_spawn=False):
         self.bombas, self.projeteis, self.itens_chao, self.npcs, self.saida_rect, self.saida_aberta = [], [], [], [], None, False
         self.mapa = self.gerador.gerar_fase(self.fase_atual)
+        self.saida_rect = None
+        for lin, linha in enumerate(self.mapa):
+            for col, tile in enumerate(linha):
+                if tile == 3:
+                    self.saida_rect = pygame.Rect(col * TELA_SIZE, lin * TELA_SIZE, TELA_SIZE, TELA_SIZE)
+                    break
+            if self.saida_rect:
+                break
  
         if primeiro_spawn:
             self.player.rect.topleft = (TELA_SIZE + 5, TELA_SIZE + 5)
+            self.player.sincronizar_posicao()
         else:
             livres = self.gerador.listar_chao_livre_acessivel(self.mapa)
             lin, col = random.choice(livres) if livres else (1, 1)
             self.player.rect.topleft = (col * TELA_SIZE + 5, lin * TELA_SIZE + 5)
+            self.player.sincronizar_posicao()
  
         self._cache_paredes_fisicas()
         self._spawnar_inimigos()
  
     def _cache_paredes_fisicas(self):
         self.paredes = []
+        self.paredes_projeteis = []
+
         for lin_idx, linha in enumerate(self.mapa):
             for col_idx, tile in enumerate(linha):
-                if tile in (1, 2, 4, 5): 
-                    self.paredes.append(pygame.Rect(col_idx * TELA_SIZE, lin_idx * TELA_SIZE, TELA_SIZE, TELA_SIZE))
+                if tile in (1, 2, 4, 5):
+                    parede = pygame.Rect(
+                        col_idx * TELA_SIZE,
+                        lin_idx * TELA_SIZE,
+                        TELA_SIZE,
+                        TELA_SIZE,
+                    )
+                    self.paredes.append(parede)
+                    if tile != 5:
+                        self.paredes_projeteis.append(parede)
  
     def _spawnar_inimigos(self):
         self.inimigos = []
-        origem_lin, origem_col = self.player.rect.centery // TELA_SIZE, self.player.rect.centerx // TELA_SIZE
-        candidatos = self.gerador.listar_chao_livre_acessivel(self.mapa, excluir_raio=5, origem=(origem_lin, origem_col))
- 
+        origem_lin = self.player.rect.centery // TELA_SIZE
+        origem_col = self.player.rect.centerx // TELA_SIZE
+        candidatos = self.gerador.listar_chao_livre_acessivel(
+            self.mapa,
+            excluir_raio=5,
+            origem=(origem_lin, origem_col),
+        )
+        random.shuffle(candidatos)
+
         legiao_atual = []
         for classe, qtd_min, qtd_max in _tabela_spawns(self.fase_atual):
-            qtd = random.randint(qtd_min, qtd_max)
-            posicoes = random.sample(candidatos, min(qtd, len(candidatos)))
-            for lin, col in posicoes:
+            quantidade = random.randint(qtd_min, qtd_max)
+            criados = 0
+
+            while candidatos and criados < quantidade:
+                lin, col = candidatos.pop()
                 x, y = col * TELA_SIZE, lin * TELA_SIZE
+
                 if classe is LegiaoDeFantasmas:
                     mob = LegiaoDeFantasmas(x, y, grupo=legiao_atual)
-                    legiao_atual.append(mob)
-                else: mob = classe(x, y)
- 
-                # seguranca extra pro bug do fantasma nascendo dentro de bloco solido:
-                # o tile escolhido ja devia ser chao livre, mas se o retangulo do mob
-                # (que pode ser um pouco maior que o tile) acabar encostando numa parede
-                # vizinha, tenta reposicionar num outro candidato da lista antes de desistir.
-                if any(mob.rect.colliderect(p) for p in self.paredes):
-                    for lin2, col2 in candidatos:
-                        x2, y2 = col2 * TELA_SIZE, lin2 * TELA_SIZE
-                        mob.rect.x, mob.rect.y = x2, y2
-                        if not any(mob.rect.colliderect(p) for p in self.paredes):
-                            break
- 
+                else:
+                    mob = classe(x, y)
+
+                colide = any(mob.rect.colliderect(parede) for parede in self.paredes)
+                colide = colide or any(mob.rect.colliderect(outro.rect) for outro in self.inimigos)
+                if colide:
+                    continue
+
                 self.inimigos.append(mob)
- 
+                if isinstance(mob, LegiaoDeFantasmas):
+                    legiao_atual.append(mob)
+                criados += 1
+
+    def _gerar_drops_inimigo(self, inimigo):
+        if getattr(inimigo, "_drops_gerados", False):
+            return
+
+        inimigo._drops_gerados = True
+        if isinstance(inimigo, Slime) and inimigo.dividiu:
+            return
+
+        tocar('morte')
+        self.itens_chao.extend(gerar_drops_mob(inimigo))
+
     def _spawnar_npcs(self):
         if not self.saida_rect: 
             return
@@ -428,10 +469,14 @@ class BlastMiner:
             if b.drops_gerados:
                 self.itens_chao.extend(b.drops_gerados)
                 b.drops_gerados.clear()
-            if b.explodiu:
+            if b.explodiu and b.efeito_timer <= 0:
                 self.bombas.remove(b)
                 self._cache_paredes_fisicas()
  
+        for inimigo in self.inimigos:
+            if not inimigo.ativo:
+                self._gerar_drops_inimigo(inimigo)
+
         self.inimigos = [i for i in self.inimigos if i.ativo]
         novos_slimes, hitbox_picareta = [], self.player.hitbox_picareta_atual()
  
@@ -439,6 +484,7 @@ class BlastMiner:
             inimigo.mover(self.player, self.paredes, self.mapa, self.bombas)
  
             if hasattr(inimigo, 'projeteis_pendentes') and inimigo.projeteis_pendentes:
+                tocar('projetil')
                 for ox, oy, ax, ay in inimigo.projeteis_pendentes:
                     if isinstance(inimigo, CogumeloEsporos): self.projeteis.append(Esporo(ox, oy, ax, ay))
                     elif isinstance(inimigo, Goblin): self.projeteis.append(Lanca(ox, oy, ax, ay))
@@ -462,7 +508,11 @@ class BlastMiner:
  
             # bosses: atualiza os golpes em area telegrafados (cada um decide sozinho
             # quando disparar um golpe novo dentro do proprio atualizar_ataques)
-            if isinstance(inimigo, Boss): inimigo.atualizar_ataques(self.player, self.paredes, self.mapa)
+            if isinstance(inimigo, Boss):
+                ataques_antes = {id(ataque) for ataque in inimigo.ataques_ativos}
+                inimigo.atualizar_ataques(self.player, self.paredes, self.mapa)
+                if any(id(ataque) not in ataques_antes for ataque in inimigo.ataques_ativos):
+                    tocar('aviso_ataque')
  
             if hitbox_picareta and not inimigo._atingindo_esse_swing and inimigo.rect.colliderect(hitbox_picareta):
                 inimigo._atingindo_esse_swing = True
@@ -476,19 +526,25 @@ class BlastMiner:
                             novos_slimes.append(mini)
                 else: inimigo.receber_dano_picareta(dano, self.player.rect)
  
-            if not hitbox_picareta: inimigo._atingindo_esse_swing = False
-            if not inimigo.ativo: self.itens_chao.extend(gerar_drops_mob(inimigo))
+            if not hitbox_picareta:
+                inimigo._atingindo_esse_swing = False
+            if not inimigo.ativo:
+                self._gerar_drops_inimigo(inimigo)
  
             # golem de lava: ataque especial de solo a distancia, roda todo frame
             # (o cooldown/alcance interno dele decide quando realmente bate)
-            if isinstance(inimigo, GolemLava): inimigo.atacar_solo(self.player)
+            if isinstance(inimigo, GolemLava):
+                avisava_antes = inimigo.avisando_ataque
+                inimigo.atacar_solo(self.player)
+                if inimigo.avisando_ataque and not avisava_antes:
+                    tocar('aviso_ataque')
  
             if isinstance(inimigo, Golem): inimigo.aplicar_knockback_no_player(self.player, self.paredes, self.bombas)
             elif inimigo.rect.colliderect(self.player.rect): self.player.receber_dano()
  
         for s in novos_slimes: self.inimigos.append(s)
         for proj in self.projeteis[:]:
-            proj.atualizar(self.player, self.paredes)
+            proj.atualizar(self.player, self.paredes_projeteis)
             if not proj.ativo: self.projeteis.remove(proj)
  
         for item in self.itens_chao[:]:
@@ -504,6 +560,10 @@ class BlastMiner:
                 self._spawnar_npcs()
  
         if self.saida_aberta and self.saida_rect and self.player.rect.colliderect(self.saida_rect):
+            if self.fase_atual >= FASE_FINAL:
+                self.fsm.mudar_estado("vitoria")
+                return
+
             self.fase_atual += 1
             self._carregar_fase(primeiro_spawn=False)
             self.fsm.mudar_estado("jogo")
@@ -515,16 +575,14 @@ class BlastMiner:
     def _desenhar_jogo(self):
         self.desenhar_cenario()
         for b in self.bombas:
-            pygame.draw.rect(self.tela, b.cor, pygame.Rect(b.rect.x - self.cam_x, b.rect.y - self.cam_y, TELA_SIZE, TELA_SIZE))
+            b.desenhar(self.tela, self.cam_x, self.cam_y)
         for item in self.itens_chao: item.desenhar(self.tela, self.cam_x, self.cam_y)
         for proj in self.projeteis: proj.desenhar(self.tela, self.cam_x, self.cam_y)
         for npc in self.npcs: npc.desenhar(self.tela, self.cam_x, self.cam_y)
  
         for inimigo in self.inimigos:
-            ro = inimigo.rect.copy()
-            inimigo.rect = pygame.Rect(inimigo.rect.x - self.cam_x, inimigo.rect.y - self.cam_y, inimigo.rect.width, inimigo.rect.height)
-            inimigo.desenhar(self.tela)
-            inimigo.rect = ro
+            inimigo.desenhar(self.tela, self.cam_x, self.cam_y)
+
             if isinstance(inimigo, Boss):
                 inimigo.desenhar_extra(self.tela, self.cam_x, self.cam_y)
                 inimigo.desenhar_ataques(self.tela, self.cam_x, self.cam_y)
@@ -536,7 +594,6 @@ class BlastMiner:
         self.desenhar_hud()
  
     def desenhar_cenario(self):
-        self.saida_rect = None
         bioma = _bioma(self.fase_atual)
         cores = BIOMAS[bioma]
         carregadores_sprites = {
@@ -546,18 +603,20 @@ class BlastMiner:
         }
         carregar_sprites, obter_sprite = carregadores_sprites.get(bioma, (None, None))
         usar_sprites = carregar_sprites is not None and bool(carregar_sprites())
-        if usar_sprites:
-            self.tela.fill(cores['chao'])
+        self.tela.fill(cores['chao'])
 
-        for lin_idx, inline in enumerate(self.mapa):
-            for col_idx, tile in enumerate(inline):
-                x, y = col_idx * TELA_SIZE - self.cam_x, lin_idx * TELA_SIZE - self.cam_y
+        linha_inicio = max(0, self.cam_y // TELA_SIZE)
+        linha_fim = min(len(self.mapa), (self.cam_y + ALTURA) // TELA_SIZE + 1)
+        coluna_inicio = max(0, self.cam_x // TELA_SIZE)
+        coluna_fim = min(len(self.mapa[0]), (self.cam_x + LARGURA) // TELA_SIZE + 1)
+
+        for lin_idx in range(linha_inicio, linha_fim):
+            inline = self.mapa[lin_idx]
+            for col_idx in range(coluna_inicio, coluna_fim):
+                tile = inline[col_idx]
+                x = col_idx * TELA_SIZE - self.cam_x
+                y = lin_idx * TELA_SIZE - self.cam_y
                 rect = pygame.Rect(x, y, TELA_SIZE, TELA_SIZE)
-
-                if tile == 3:
-                    self.saida_rect = pygame.Rect(col_idx * TELA_SIZE, lin_idx * TELA_SIZE, TELA_SIZE, TELA_SIZE)
-                if x + TELA_SIZE < 0 or x > LARGURA or y + TELA_SIZE < 0 or y > ALTURA:
-                    continue
 
                 if usar_sprites:
                     tipo = {
@@ -569,7 +628,7 @@ class BlastMiner:
                     }.get(tile)
                     if tile == 3:
                         tipo = 'saida_aberta' if self.saida_aberta else 'saida_fechada'
-                    sprite = obter_sprite(tipo, lin_idx, col_idx, animado=(tile == 5)) if tipo else None
+                    sprite = obter_sprite(tipo, lin_idx, col_idx, animado=False) if tipo else None
                     if sprite:
                         self.tela.blit(sprite, rect)
                         continue
@@ -598,56 +657,79 @@ class BlastMiner:
                         cad = self._fonte_cadeado.render('LOCKED', True, (255, 80, 80))
                         self.tela.blit(cad, (x + TELA_SIZE // 2 - cad.get_width() // 2, y + TELA_SIZE // 2 - cad.get_height() // 2))
     def desenhar_hud(self):
-        # fontes agora vem cacheadas do __init__ (self._fonte_hud / self._fonte_hud_p)
-        # em vez de criar novas toda vez que esse metodo roda (que e todo frame)
         fonte, fonte_p = self._fonte_hud, self._fonte_hud_p
-        bx, by, bl, ba = 10, ALTURA - 50, 220, 22
-        pygame.draw.rect(self.tela, (60, 20, 20), (bx, by, bl, ba), border_radius=4)
-        fw = int(bl * self.player.hp_pct)
-        if fw > 0: pygame.draw.rect(self.tela, (int(255*(1-self.player.hp_pct)), int(200*self.player.hp_pct), 30), (bx, by, fw, ba), border_radius=4)
-        pygame.draw.rect(self.tela, (200, 200, 200), (bx, by, bl, ba), 2, border_radius=4)
-        self.tela.blit(fonte_p.render(f"HP  {self.player.hp}/{self.player.hp_max}", True, (255, 255, 255)), (bx + 6, by + 3))
- 
-        # mostra os 2 status de dano ao longo do tempo (veneno e fogo) empilhados
-        # em cima da barra de vida, um de cada vez pra nao sobrepor
-        status_y = by - 20
+
+        # Vida: painel discreto com barra preenchida, sem contorno branco forte.
+        bx, by, bl, ba = 18, ALTURA - 58, 230, 25
+        pygame.draw.rect(self.tela, (25, 21, 18), (bx - 7, by - 7, bl + 14, ba + 14), border_radius=8)
+        pygame.draw.rect(self.tela, (75, 39, 34), (bx, by, bl, ba), border_radius=5)
+        fw = max(0, int(bl * self.player.hp_pct))
+        if fw > 0:
+            cor_vida = (int(190 * (1 - self.player.hp_pct) + 45), int(100 + 105 * self.player.hp_pct), 65)
+            pygame.draw.rect(self.tela, cor_vida, (bx, by, fw, ba), border_radius=5)
+        pygame.draw.rect(self.tela, (125, 105, 83), (bx, by, bl, ba), 1, border_radius=5)
+        hp_txt = fonte_p.render(f'VIDA  {self.player.hp}/{self.player.hp_max}', True, (245, 235, 215))
+        self.tela.blit(hp_txt, (bx + 8, by + 4))
+
+        status_y = by - 23
         if not self.player.imune_veneno and self.player._veneno_timer > 0:
-            self.tela.blit(fonte_p.render("ENVENENADO", True, (100, 255, 60)), (bx, status_y))
+            self.tela.blit(fonte_p.render('Envenenado', True, (157, 205, 105)), (bx, status_y))
             status_y -= 18
         if self.player._fogo_timer > 0:
-            self.tela.blit(fonte_p.render("PEGANDO FOGO", True, (255, 140, 40)), (bx, status_y))
- 
-        tb = fonte.render(f"[RMB] {self.player.bomba_cooldown/60:.1f}s" if self.player.bomba_cooldown > 0 else "[RMB] BOMBA", True, (255, 200, 0) if self.player.bomba_cooldown > 0 else (100, 255, 100))
-        self.tela.blit(tb, (250, ALTURA - 45))
- 
-        tp = fonte.render(f"[LMB] {self.player.picareta_cooldown/60:.1f}s" if self.player.picareta_cooldown > 0 else "[LMB] PICARETA", True, (160, 140, 50) if self.player.picareta_cooldown > 0 else (200, 200, 200))
-        self.tela.blit(tp, (470, ALTURA - 45))
- 
-        nomes = {1:"Caverna Normal", 2:"Caverna Escura", 3:"Caverna de Fungos", 4:"Caverna de Cristais", 5:"NÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âºcleo VulcÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢nico"}
-        tf = fonte.render(f"FASE {self.fase_atual}  |  {nomes[_bioma(self.fase_atual)]}", True, (180, 180, 180))
-        self.tela.blit(tf, (LARGURA//2 - tf.get_width()//2, 10))
- 
-        if self.saida_aberta: self.tela.blit(fonte.render("SAÍDA ABERTA — aproxime-se de um NPC e aperte [E]", True, (80, 255, 120)), (LARGURA//2 - 250, 40))
-        self.tela.blit(fonte_p.render(f"Inimigos: {len(self.inimigos)}", True, (255, 100, 100) if len(self.inimigos) > 0 else (100, 255, 100)), (LARGURA - 130, 10))
+            self.tela.blit(fonte_p.render('Em chamas', True, (226, 133, 76)), (bx, status_y))
+
+        # Ações ficam em pequenas etiquetas em vez de texto solto na parte inferior.
+        def etiqueta(x, texto, cor):
+            imagem = fonte.render(texto, True, cor)
+            caixa = pygame.Rect(x, ALTURA - 53, imagem.get_width() + 22, 32)
+            pygame.draw.rect(self.tela, (27, 24, 20), caixa, border_radius=6)
+            pygame.draw.rect(self.tela, (89, 73, 54), caixa, 1, border_radius=6)
+            self.tela.blit(imagem, (caixa.x + 11, caixa.y + 6))
+
+        texto_bomba = f'Botão direito  ·  {self.player.bomba_cooldown/60:.1f}s' if self.player.bomba_cooldown > 0 else 'Botão direito  ·  Bomba'
+        texto_picareta = f'Botão esquerdo  ·  {self.player.picareta_cooldown/60:.1f}s' if self.player.picareta_cooldown > 0 else 'Botão esquerdo  ·  Picareta'
+        etiqueta(275, texto_bomba, (220, 177, 105) if self.player.bomba_cooldown > 0 else (177, 202, 137))
+        etiqueta(520, texto_picareta, (190, 171, 125))
+
+        nomes = {1: 'Caverna Normal', 2: 'Caverna Escura', 3: 'Caverna de Fungos', 4: 'Caverna de Cristais', 5: 'Núcleo Vulcânico'}
+        fase = fonte.render(f'FASE {self.fase_atual}  ·  {nomes[_bioma(self.fase_atual)]}', True, (232, 215, 179))
+        fase_caixa = pygame.Rect(LARGURA // 2 - fase.get_width() // 2 - 13, 9, fase.get_width() + 26, 31)
+        pygame.draw.rect(self.tela, (28, 25, 21), fase_caixa, border_radius=6)
+        pygame.draw.rect(self.tela, (91, 75, 53), fase_caixa, 1, border_radius=6)
+        self.tela.blit(fase, (fase_caixa.x + 13, fase_caixa.y + 6))
+
+        if self.saida_aberta:
+            aviso = fonte_p.render('Saída aberta  ·  aproxime-se do NPC e aperte E', True, (163, 211, 133))
+            self.tela.blit(aviso, aviso.get_rect(center=(LARGURA // 2, 52)))
+        inimigos = fonte_p.render(f'{len(self.inimigos)} inimigos', True, (220, 139, 115) if self.inimigos else (155, 190, 135))
+        self.tela.blit(inimigos, (LARGURA - inimigos.get_width() - 20, 17))
         self._desenhar_barra_status()
         self._desenhar_barra_boss()
-        
         self._desenhar_inventario_hud()
- 
+
     def _desenhar_barra_status(self):
         fonte, p = self._fonte_status, self.player
         items = [
-            ('FORCA', p.nivel_forca, 5),
-            ('VEL', p.nivel_velocidade, 4),
-            ('VIDA', p.nivel_hp, 5),
-            ('BOMBA', p.nivel_bomba_alcance, 3),
-            ('PAVIO', p.nivel_bomba_cd, 3),
+            ('Picareta', p.nivel_forca, 5),
+            ('Velocidade', p.nivel_velocidade, 4),
+            ('Vida extra', p.nivel_hp, 5),
+            ('Alcance bomba', p.nivel_bomba_alcance, 3),
+            ('Pavio', p.nivel_bomba_cd, 3),
+            ('Escudo', p.nivel_escudo, 3),
         ]
-        sx, sy = 10, 60
+        sx, sy = 18, 78
         for label, nivel, maximo in items:
-            barra = '#' * nivel + '-' * (maximo - nivel)
-            self.tela.blit(fonte.render(f'{label}: [{barra}]', True, (200, 200, 255)), (sx, sy))
-            sy += 22
+            texto = fonte.render(label, True, (180, 166, 142))
+            self.tela.blit(texto, (sx, sy))
+            barra_x = sx + 112
+            for indice in range(maximo):
+                cor = (183, 132, 76) if indice < nivel else (54, 47, 39)
+                pygame.draw.rect(self.tela, cor, (barra_x + indice * 13, sy + 3, 9, 9), border_radius=2)
+            sy += 21
+        if p.escudo_cargas > 0:
+            escudo = fonte.render(f'Escudo disponível: {p.escudo_cargas}', True, (139, 194, 205))
+            self.tela.blit(escudo, (sx, sy + 2))
+
     def _desenhar_barra_boss(self):
         # procura um boss vivo entre os inimigos da fase e desenha a barra de vida
         # grande e centralizada no topo, no estilo classico de luta contra chefe
@@ -721,6 +803,7 @@ class BlastMiner:
         self.tela_pause.tela    = self.tela
         self.tela_gameover.tela = self.tela
         self.tela_loja.tela     = self.tela
+        self.tela_vitoria.tela  = self.tela
  
     def executar(self):
         while self.rodando:
