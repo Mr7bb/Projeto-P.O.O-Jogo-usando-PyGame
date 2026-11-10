@@ -1,6 +1,7 @@
 import pygame
 import random
 from entidades.Inimigo import Inimigo
+from entidades.animacoes import desenhar_animacao
  
 class Slime(Inimigo):
     """
@@ -18,7 +19,9 @@ class Slime(Inimigo):
         vida_inicial = 3 if mini else 2
         super().__init__(x, y, largura=tamanho, altura=tamanho, velocidade=1, vida=vida_inicial, cor=self.COR_MINI if mini else self.COR)
         self.mini = mini
-        self.dividiu = False  
+        self.dividiu = False
+        self.em_movimento = False
+        self.sprite_invertido = False
         # direcao_patrulha/passos_patrulha ja vem prontos da classe mae (Inimigo.__init__)
  
     def receber_dano_explosao(self):
@@ -42,10 +45,27 @@ class Slime(Inimigo):
     def mover(self, player, paredes, mapa=None, bombas=None):
         if self._aplicar_knockback_proprio(paredes): return
         # slime nao persegue ninguem, so fica patrulhando o tempo todo (metodo da classe mae)
+        pos_antiga = self.rect.topleft
         self._patrulhar_aleatorio(paredes, passos_max=80)
+        self.em_movimento = self.rect.topleft != pos_antiga
+        self.sprite_invertido = self.direcao_patrulha == 'esquerda'
  
-    def desenhar(self, tela):
-        pygame.draw.ellipse(tela, self.cor, self.rect)
-        ox, oy = self.rect.centerx, self.rect.centery - 4
-        pygame.draw.circle(tela, (20, 20, 20), (ox - 6, oy), 3)
-        pygame.draw.circle(tela, (20, 20, 20), (ox + 6, oy), 3)
+    def desenhar(self, tela, cam_x=0, cam_y=0):
+        altura = 34 if self.mini else 48
+        if self.kb_timer > 0:
+            acao = "hurt"
+        else:
+            acao = "walk" if self.em_movimento else "idle"
+        deslocamentos_pulo = (0, -3, -5, -1) if acao == "walk" else None
+        if not desenhar_animacao(
+            tela, self, "slime", acao, altura, cam_x, cam_y,
+            intervalo=10 if self.em_movimento else 14,
+            inverter=self.sprite_invertido,
+            escala_uniforme=(acao == "walk"),
+            deslocamentos_quadros=deslocamentos_pulo,
+        ):
+            rect = self.rect_na_tela(cam_x, cam_y)
+            pygame.draw.ellipse(tela, self.cor, rect)
+            ox, oy = rect.centerx, rect.centery - 4
+            pygame.draw.circle(tela, (20, 20, 20), (ox - 6, oy), 3)
+            pygame.draw.circle(tela, (20, 20, 20), (ox + 6, oy), 3)

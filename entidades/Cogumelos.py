@@ -1,6 +1,7 @@
 import pygame
 import random
 from entidades.Inimigo import Inimigo
+from entidades.animacoes import desenhar_animacao
  
 class CogumeloEsporos(Inimigo):
     """cogumelo parado no lugar (nunca anda), fica escondido e depois lanca um esporo venenoso."""
@@ -42,10 +43,21 @@ class CogumeloEsporos(Inimigo):
         self.kb_dy = 0
         self.kb_timer = 0
  
-    def desenhar(self, tela):
-        pygame.draw.rect(tela, self.cor, self.rect)
-        chapeu = pygame.Rect(self.rect.x - 5, self.rect.y - 8, self.rect.width + 10, 12)
-        pygame.draw.ellipse(tela, (180, 60, 60), chapeu)
+    def desenhar(self, tela, cam_x=0, cam_y=0):
+        if self.escondido and self.timer_escondido <= 30:
+            acao = "attack"
+        elif self.escondido:
+            acao = "alert"
+        else:
+            acao = "hidden"
+        if not desenhar_animacao(
+            tela, self, "cogumelo_esporos", acao, 48, cam_x, cam_y,
+            intervalo=8 if acao != "idle" else 14,
+        ):
+            rect = self.rect_na_tela(cam_x, cam_y)
+            pygame.draw.rect(tela, self.cor, rect)
+            chapeu = pygame.Rect(rect.x - 5, rect.y - 8, rect.width + 10, 12)
+            pygame.draw.ellipse(tela, (180, 60, 60), chapeu)
  
  
 class CogumeloAgressivo(Inimigo):
@@ -63,21 +75,24 @@ class CogumeloAgressivo(Inimigo):
         self.investindo = False
         self.investida_dx = self.investida_dy = 0
         self.investida_timer = 0
+        self.em_movimento = False
+        self.sprite_invertido = False
         # direcao_patrulha/passos_patrulha ja vem prontos da classe mae (Inimigo.__init__)
  
     def mover(self, player, paredes, mapa=None, bombas=None):
         if self._aplicar_knockback_proprio(paredes): return
-        pos_antiga_x, pos_antiga_y = self.rect.x, self.rect.y
+        pos_antiga_x, pos_antiga_y = self.salvar_posicao()
+        self.sprite_invertido = player.rect.centerx < self.rect.centerx
         dist = ((self.rect.centerx - player.rect.centerx)**2 + (self.rect.centery - player.rect.centery)**2) ** 0.5
  
         if self.investindo:
             # ta no meio da investida: so anda na linha reta calculada quando comecou o dash
-            self.rect.x += self.investida_dx
-            self.rect.y += self.investida_dy
+            self.mover_x(self.investida_dx)
+            self.mover_y(self.investida_dy)
             self.investida_timer -= 1
             for p in paredes:
                 if self.rect.colliderect(p):
-                    self.rect.x, self.rect.y = pos_antiga_x, pos_antiga_y
+                    self.restaurar_posicao(pos_antiga_x, pos_antiga_y)
                     self.investindo = False
                     break
             if self.investida_timer <= 0:
@@ -87,14 +102,14 @@ class CogumeloAgressivo(Inimigo):
  
         if dist <= self.raio_deteccao:
             # perseguindo o player
-            if self.rect.x < player.rect.x: self.rect.x += self.velocidade
-            elif self.rect.x > player.rect.x: self.rect.x -= self.velocidade
-            if self.rect.y < player.rect.y: self.rect.y += self.velocidade
-            elif self.rect.y > player.rect.y: self.rect.y -= self.velocidade
+            if self.rect.x < player.rect.x: self.mover_x(self.velocidade)
+            elif self.rect.x > player.rect.x: self.mover_x(-self.velocidade)
+            if self.rect.y < player.rect.y: self.mover_y(self.velocidade)
+            elif self.rect.y > player.rect.y: self.mover_y(-self.velocidade)
  
             for p in paredes:
                 if self.rect.colliderect(p):
-                    self.rect.x, self.rect.y = pos_antiga_x, pos_antiga_y
+                    self.restaurar_posicao(pos_antiga_x, pos_antiga_y)
                     break
  
             if self.cooldown_investida <= 0 and dist <= 200:
@@ -111,8 +126,21 @@ class CogumeloAgressivo(Inimigo):
             self._patrulhar_aleatorio(paredes, passos_max=80)
  
         if self.cooldown_investida > 0: self.cooldown_investida -= 1
+        self.em_movimento = self.rect.topleft != (round(pos_antiga_x), round(pos_antiga_y))
  
-    def desenhar(self, tela):
-        pygame.draw.rect(tela, self.cor, self.rect)
-        chapeu = pygame.Rect(self.rect.x - 6, self.rect.y - 10, self.rect.width + 12, 14)
-        pygame.draw.ellipse(tela, (80, 40, 160), chapeu)
+    def desenhar(self, tela, cam_x=0, cam_y=0):
+        if self.kb_timer > 0:
+            acao = "hurt"
+        elif self.investindo:
+            acao = "attack"
+        else:
+            acao = "walk" if self.em_movimento else "idle"
+        if not desenhar_animacao(
+            tela, self, "cogumelo_agressivo", acao, 52, cam_x, cam_y,
+            intervalo=7 if acao != "idle" else 13,
+            inverter=self.sprite_invertido,
+        ):
+            rect = self.rect_na_tela(cam_x, cam_y)
+            pygame.draw.rect(tela, self.cor, rect)
+            chapeu = pygame.Rect(rect.x - 6, rect.y - 10, rect.width + 12, 14)
+            pygame.draw.ellipse(tela, (80, 40, 160), chapeu)

@@ -1,6 +1,7 @@
 import pygame
 import random
 from entidades.Inimigo import Inimigo
+from entidades.animacoes import desenhar_animacao
 from config import TELA_SIZE
  
  
@@ -125,7 +126,7 @@ class EcoPerdido(Boss):
  
     def mover(self, player, paredes, mapa=None, bombas=None):
         if self._aplicar_knockback_proprio(paredes): return
-        pos_x, pos_y = self.rect.x, self.rect.y
+        pos_x, pos_y = self.salvar_posicao()
  
         self.timer_forma -= 1
         if self.timer_forma <= 0:
@@ -136,16 +137,16 @@ class EcoPerdido(Boss):
                 self.timer_forma = self.DURACAO_FANTASMA
                 self.cor = self.COR_FANTASMA
  
-        if self.rect.x < player.rect.x: self.rect.x += self.velocidade
-        elif self.rect.x > player.rect.x: self.rect.x -= self.velocidade
-        if self.rect.y < player.rect.y: self.rect.y += self.velocidade
-        elif self.rect.y > player.rect.y: self.rect.y -= self.velocidade
+        if self.rect.x < player.rect.x: self.mover_x(self.velocidade)
+        elif self.rect.x > player.rect.x: self.mover_x(-self.velocidade)
+        if self.rect.y < player.rect.y: self.mover_y(self.velocidade)
+        elif self.rect.y > player.rect.y: self.mover_y(-self.velocidade)
  
         if self.forma == "material":
             # so na forma material que ele esbarra em parede de verdade
             for p in paredes:
                 if self.rect.colliderect(p):
-                    self.rect.x, self.rect.y = pos_x, pos_y
+                    self.restaurar_posicao(pos_x, pos_y)
                     break
  
         if self.cooldown_sussurro > 0: self.cooldown_sussurro -= 1
@@ -168,15 +169,16 @@ class EcoPerdido(Boss):
             self.cooldown_picareta_fantasma = 240
             self.projeteis_pendentes.append((self.rect.centerx, self.rect.centery, player.rect.centerx, player.rect.centery))
  
-    def desenhar(self, tela):
+    def desenhar(self, tela, cam_x=0, cam_y=0):
+        rect = self.rect_na_tela(cam_x, cam_y)
         if self.forma == "fantasma":
-            surf = pygame.Surface((self.rect.width, self.rect.height), pygame.SRCALPHA)
+            surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
             surf.fill((*self.COR_FANTASMA, 140))
-            tela.blit(surf, (self.rect.x, self.rect.y))
-            pygame.draw.rect(tela, self.COR_FANTASMA, self.rect, 2)
+            tela.blit(surf, rect.topleft)
+            pygame.draw.rect(tela, self.COR_FANTASMA, rect, 2)
         else:
-            pygame.draw.rect(tela, self.COR_MATERIAL, self.rect)
-            pygame.draw.rect(tela, (40, 20, 60), self.rect, 3)
+            pygame.draw.rect(tela, self.COR_MATERIAL, rect)
+            pygame.draw.rect(tela, (40, 20, 60), rect, 3)
  
  
 
@@ -224,7 +226,7 @@ class Gruk(Boss):
  
     def mover(self, player, paredes, mapa=None, bombas=None):
         if self._aplicar_knockback_proprio(paredes): return
-        pos_x, pos_y = self.rect.x, self.rect.y
+        pos_x, pos_y = self.salvar_posicao()
  
         if self.atordoado_timer > 0:
             self.atordoado_timer -= 1
@@ -232,13 +234,13 @@ class Gruk(Boss):
             return
  
         if self.investindo:
-            self.rect.x += self.investida_dx
-            self.rect.y += self.investida_dy
+            self.mover_x(self.investida_dx)
+            self.mover_y(self.investida_dy)
             self._timer_investida -= 1
             bateu = False
             for p in paredes:
                 if self.rect.colliderect(p):
-                    self.rect.x, self.rect.y = pos_x, pos_y
+                    self.restaurar_posicao(pos_x, pos_y)
                     bateu = True
                     break
             if bateu or self._timer_investida <= 0:
@@ -251,13 +253,13 @@ class Gruk(Boss):
                     self.cor = self.COR_NORMAL
             return
  
-        if self.rect.x < player.rect.x: self.rect.x += self.velocidade
-        elif self.rect.x > player.rect.x: self.rect.x -= self.velocidade
-        if self.rect.y < player.rect.y: self.rect.y += self.velocidade
-        elif self.rect.y > player.rect.y: self.rect.y -= self.velocidade
+        if self.rect.x < player.rect.x: self.mover_x(self.velocidade)
+        elif self.rect.x > player.rect.x: self.mover_x(-self.velocidade)
+        if self.rect.y < player.rect.y: self.mover_y(self.velocidade)
+        elif self.rect.y > player.rect.y: self.mover_y(-self.velocidade)
         for p in paredes:
             if self.rect.colliderect(p):
-                self.rect.x, self.rect.y = pos_x, pos_y
+                self.restaurar_posicao(pos_x, pos_y)
                 break
  
         if self.cooldown_pancada > 0: self.cooldown_pancada -= 1
@@ -308,11 +310,12 @@ class Gruk(Boss):
             surf.fill((60, 160, 40, 120))
             tela.blit(surf, (rr.x, rr.y))
  
-    def desenhar(self, tela):
-        pygame.draw.rect(tela, self.cor, self.rect)
+    def desenhar(self, tela, cam_x=0, cam_y=0):
+        rect = self.rect_na_tela(cam_x, cam_y)
+        pygame.draw.rect(tela, self.cor, rect)
         # dois olhos, pra lembrar que ele veio do goblin
-        pygame.draw.circle(tela, (255, 240, 60), (self.rect.centerx - 10, self.rect.centery - 8), 4)
-        pygame.draw.circle(tela, (255, 240, 60), (self.rect.centerx + 10, self.rect.centery - 8), 4)
+        pygame.draw.circle(tela, (255, 240, 60), (rect.centerx - 10, rect.centery - 8), 4)
+        pygame.draw.circle(tela, (255, 240, 60), (rect.centerx + 10, rect.centery - 8), 4)
  
  
 class Mykros(Boss):
@@ -346,15 +349,15 @@ class Mykros(Boss):
  
     def mover(self, player, paredes, mapa=None, bombas=None):
         if self._aplicar_knockback_proprio(paredes): return
-        pos_x, pos_y = self.rect.x, self.rect.y
+        pos_x, pos_y = self.salvar_posicao()
  
-        if self.rect.x < player.rect.x: self.rect.x += self.velocidade
-        elif self.rect.x > player.rect.x: self.rect.x -= self.velocidade
-        if self.rect.y < player.rect.y: self.rect.y += self.velocidade
-        elif self.rect.y > player.rect.y: self.rect.y -= self.velocidade
+        if self.rect.x < player.rect.x: self.mover_x(self.velocidade)
+        elif self.rect.x > player.rect.x: self.mover_x(-self.velocidade)
+        if self.rect.y < player.rect.y: self.mover_y(self.velocidade)
+        elif self.rect.y > player.rect.y: self.mover_y(-self.velocidade)
         for p in paredes:
             if self.rect.colliderect(p):
-                self.rect.x, self.rect.y = pos_x, pos_y
+                self.restaurar_posicao(pos_x, pos_y)
                 break
  
         if self.cooldown_esporos > 0: self.cooldown_esporos -= 1
@@ -399,10 +402,15 @@ class Mykros(Boss):
             if self.parasitas_vivos and self.ativo:
                 self.vida = min(self.vida_max, self.vida + max(1, self.vida_max // 100))
  
-    def desenhar(self, tela):
-        pygame.draw.ellipse(tela, self.cor, self.rect)
-        chapeu = pygame.Rect(self.rect.x - 10, self.rect.y - 14, self.rect.width + 20, 20)
-        pygame.draw.ellipse(tela, (170, 90, 190), chapeu)
+    def desenhar(self, tela, cam_x=0, cam_y=0):
+        if not desenhar_animacao(
+            tela, self, "cogumelo_agressivo", "idle", 82,
+            cam_x, cam_y, intervalo=12,
+        ):
+            rect = self.rect_na_tela(cam_x, cam_y)
+            pygame.draw.ellipse(tela, self.cor, rect)
+            chapeu = pygame.Rect(rect.x - 10, rect.y - 14, rect.width + 20, 20)
+            pygame.draw.ellipse(tela, (170, 90, 190), chapeu)
  
 
 class Guardiao(Boss):
@@ -443,7 +451,7 @@ class Guardiao(Boss):
  
     def mover(self, player, paredes, mapa=None, bombas=None):
         if self._aplicar_knockback_proprio(paredes): return
-        pos_x, pos_y = self.rect.x, self.rect.y
+        pos_x, pos_y = self.salvar_posicao()
  
         if not self.armadura_ativa:
             self.timer_exposto -= 1
@@ -451,13 +459,13 @@ class Guardiao(Boss):
                 self.armadura_ativa = True
                 self.cor = self.COR_ARMADURA
  
-        if self.rect.x < player.rect.x: self.rect.x += self.velocidade
-        elif self.rect.x > player.rect.x: self.rect.x -= self.velocidade
-        if self.rect.y < player.rect.y: self.rect.y += self.velocidade
-        elif self.rect.y > player.rect.y: self.rect.y -= self.velocidade
+        if self.rect.x < player.rect.x: self.mover_x(self.velocidade)
+        elif self.rect.x > player.rect.x: self.mover_x(-self.velocidade)
+        if self.rect.y < player.rect.y: self.mover_y(self.velocidade)
+        elif self.rect.y > player.rect.y: self.mover_y(-self.velocidade)
         for p in paredes:
             if self.rect.colliderect(p):
-                self.rect.x, self.rect.y = pos_x, pos_y
+                self.restaurar_posicao(pos_x, pos_y)
                 break
  
         if self.cooldown_soco > 0: self.cooldown_soco -= 1
@@ -497,10 +505,15 @@ class Guardiao(Boss):
                 area = pygame.Rect(cx + dx - 25, cy + dy - 25, 50, 50)
                 self.ataques_ativos.append(AtaqueAreaTelegrafado(area, tempo_aviso=60, dano=10, cor=(150, 150, 255)))
  
-    def desenhar(self, tela):
-        pygame.draw.rect(tela, self.cor, self.rect)
-        borda = (255, 255, 255) if not self.armadura_ativa else (60, 60, 70)
-        pygame.draw.rect(tela, borda, self.rect, 3)
+    def desenhar(self, tela, cam_x=0, cam_y=0):
+        if not desenhar_animacao(
+            tela, self, "golem_cristal", "idle", 88,
+            cam_x, cam_y, intervalo=14,
+        ):
+            rect = self.rect_na_tela(cam_x, cam_y)
+            pygame.draw.rect(tela, self.cor, rect)
+            borda = (255, 255, 255) if not self.armadura_ativa else (60, 60, 70)
+            pygame.draw.rect(tela, borda, rect, 3)
  
 
 class CoracaoDaMina(Boss):
@@ -550,20 +563,20 @@ class CoracaoDaMina(Boss):
  
     def mover(self, player, paredes, mapa=None, bombas=None):
         if self._aplicar_knockback_proprio(paredes): return
-        pos_x, pos_y = self.rect.x, self.rect.y
+        pos_x, pos_y = self.salvar_posicao()
  
         if self.preso_timer > 0:
             self.preso_timer -= 1
             return
  
         vel = self.velocidade * (1.3 if self.fase_luta >= 2 else 1.0)
-        if self.rect.x < player.rect.x: self.rect.x += vel
-        elif self.rect.x > player.rect.x: self.rect.x -= vel
-        if self.rect.y < player.rect.y: self.rect.y += vel
-        elif self.rect.y > player.rect.y: self.rect.y -= vel
+        if self.rect.x < player.rect.x: self.mover_x(vel)
+        elif self.rect.x > player.rect.x: self.mover_x(-vel)
+        if self.rect.y < player.rect.y: self.mover_y(vel)
+        elif self.rect.y > player.rect.y: self.mover_y(-vel)
         for p in paredes:
             if self.rect.colliderect(p):
-                self.rect.x, self.rect.y = pos_x, pos_y
+                self.restaurar_posicao(pos_x, pos_y)
                 break
  
         if self.cooldown_ataque > 0: self.cooldown_ataque -= 1
@@ -601,7 +614,8 @@ class CoracaoDaMina(Boss):
                 area = pygame.Rect(self.rect.centerx - 30, self.rect.centery - 300, 60, 600)
                 self.ataques_ativos.append(AtaqueAreaTelegrafado(area, tempo_aviso=55, dano=28, cor=(255, 200, 60)))
  
-    def desenhar(self, tela):
-        pygame.draw.rect(tela, self.cor, self.rect)
+    def desenhar(self, tela, cam_x=0, cam_y=0):
+        rect = self.rect_na_tela(cam_x, cam_y)
+        pygame.draw.rect(tela, self.cor, rect)
         borda = (255, 220, 100) if self.preso_timer > 0 else (30, 10, 5)
-        pygame.draw.rect(tela, borda, self.rect, 3)
+        pygame.draw.rect(tela, borda, rect, 3)

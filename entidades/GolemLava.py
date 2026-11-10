@@ -3,6 +3,7 @@ import math
 from entidades.Golem import Golem
  
 class GolemLava(Golem):
+    SPRITE_NOME = "golem_lava"
     """
     golem de lava: uma versao mais forte do golem comum, mora no mesmo bioma dele (bioma 4).
     herda o mover() (patrulha/perseguicao) do Golem sem mudar nada, entao ele anda igualzinho.
@@ -45,6 +46,8 @@ class GolemLava(Golem):
         """
         if self.cooldown_ataque_solo > 0:
             self.cooldown_ataque_solo -= 1
+        if self.crosta_timer > 0:
+            self.crosta_timer -= 1
  
         dist = self._distancia_para(player)
  
@@ -68,11 +71,12 @@ class GolemLava(Golem):
                     player.receber_dano(self.DANO_IMPACTO)
                     player._fogo_timer = self.DURACAO_FOGO
  
-    def desenhar(self, tela):
+    def desenhar(self, tela, cam_x=0, cam_y=0):
+        rect = self.rect_na_tela(cam_x, cam_y)
+
         # crosta de lava/pedras no chao ao redor dele, some sozinha depois de um tempo
         if self.crosta_timer > 0:
-            self.crosta_timer -= 1
-            cx, cy = self.rect.centerx, self.rect.centery
+            cx, cy = rect.centerx, rect.centery
             for i in range(6):
                 ang = (i / 6) * 2 * math.pi
                 px = int(cx + 40 * math.cos(ang))
@@ -83,6 +87,6 @@ class GolemLava(Golem):
         # anel se expandindo avisando onde o golpe vai cair (telegraph)
         if self.avisando_ataque:
             raio_aviso = max(1, int(self.ALCANCE_ATAQUE * (1 - self.timer_aviso / self.TEMPO_AVISO)))
-            pygame.draw.circle(tela, (255, 90, 20), self.rect.center, raio_aviso, 2)
+            pygame.draw.circle(tela, (255, 90, 20), rect.center, raio_aviso, 2)
  
-        super().desenhar(tela)
+        super().desenhar(tela, cam_x, cam_y)

@@ -1,4 +1,5 @@
 import pygame
+from entidades.animacoes import desenhar_animacao
  
 class NPC:
     """ferreiro ou ambulante mistico. so aparecem no mapa e ficam parados esperando o player chegar perto."""
@@ -41,19 +42,22 @@ class NPC:
     def desenhar(self, tela, cam_x=0, cam_y=0):
         rx = self.rect.x - cam_x
         ry = self.rect.y - cam_y
- 
-        # corpo
-        pygame.draw.rect(tela, self.cor, (rx, ry, self.rect.width, self.rect.height), border_radius=6)
-        # borda brilhante
-        brilho = tuple(min(v + 60, 255) for v in self.cor)
-        pygame.draw.rect(tela, brilho, (rx, ry, self.rect.width, self.rect.height), 2, border_radius=6)
- 
-        # letra identificadora (fonte cacheada, ver comentario la em cima da classe)
-        txt = NPC._fonte_label.render(self.label, True, (255, 255, 255))
-        tela.blit(txt, (rx + self.rect.width  // 2 - txt.get_width()  // 2,
-                        ry + self.rect.height // 2 - txt.get_height() // 2))
- 
-        # nome acima
-        nome_txt = NPC._fonte_nome.render(self.nome, True, (220, 220, 220))
-        tela.blit(nome_txt, (rx + self.rect.width // 2 - nome_txt.get_width() // 2, ry - 18))
+        sprite = "ferreiro" if self.tipo == "ferreiro" else "ambulante"
+        altura = 58 if self.tipo == "ferreiro" else 60
+        desenhou = desenhar_animacao(
+            tela, self, sprite, "idle", altura, cam_x, cam_y, intervalo=16
+        )
+
+        if not desenhou:
+            pygame.draw.rect(tela, self.cor, (rx, ry, self.rect.width, self.rect.height), border_radius=6)
+            brilho = tuple(min(v + 60, 255) for v in self.cor)
+            pygame.draw.rect(tela, brilho, (rx, ry, self.rect.width, self.rect.height), 2, border_radius=6)
+            txt = NPC._fonte_label.render(self.label, True, (255, 255, 255))
+            tela.blit(txt, (rx + self.rect.width // 2 - txt.get_width() // 2,
+                            ry + self.rect.height // 2 - txt.get_height() // 2))
+
+        nome_txt = NPC._fonte_nome.render(self.nome, True, (235, 225, 205))
+        nome_y = ry + self.rect.height - altura - nome_txt.get_height() - 4
+        tela.blit(nome_txt, (rx + self.rect.width // 2 - nome_txt.get_width() // 2,
+                             nome_y))
     
